@@ -1,1 +1,18 @@
+{
+  "format_version": 2,
+  "header": {
+    "name": "Super Spawn & Looting Boost",
+    "description": "Aumenta o Mob Cap de caverna (86), acelera o spawn e multiplica o efeito do Looting III por 5x.",
+    "uuid": "4c8f1e23-7a9b-4e1d-8f2c-1b3a5e7d9012",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 18, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "9a8b7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d",
+      "version": [1, 0, 0]
+    }
+  ]
+}
 

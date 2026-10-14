@@ -1,0 +1,29 @@
+{
+  "format_version": "1.8.0",
+  "minecraft:spawn_rules": {
+    "description": {
+      "identifier": "minecraft:drowned_spawn_rules",
+      "population_control": "monster"
+    },
+    "conditions": [
+      {
+        "minecraft:spawner": {
+          "density_limit": 86,
+          "delay_range": [1, 2],
+          "spawn_entity": "minecraft:drowned"
+        },
+        "minecraft:herd": {
+          "min_size": 3,
+          "max_size": 10
+        },
+        "minecraft:spawns_underwater": {},
+        "minecraft:brightness_filter": {
+          "min": 0,
+          "max": 0,
+          "adjust_for_weather": false
+        },
+        "minecraft:weight": 100
+      }
+    ]
+  }
+}

@@ -16,12 +16,12 @@ jobs:
 
       - name: Create .mcpack file
         run: |
-          # Compacta os arquivos da raiz mantendo a estrutura correta sem pastas extras
-          zip -r ModBehaviorPack.mcpack manifest.json spawn_rules/ enchantments/
+          # Entra na raiz do workspace e compacta diretamente o conteúdo exigido pelo Minecraft
+          zip -r ModBehaviorPack.mcpack manifest.json spawn_rules enchantments
 
       - name: Upload .mcpack as Artifact
         uses: actions/upload-artifact@v4
         with:
           name: ModBehaviorPack
           path: ModBehaviorPack.mcpack
-          
+          compression-level: 0

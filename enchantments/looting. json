@@ -1,0 +1,31 @@
+{
+  "format_version": "1.10.0",
+  "minecraft:enchantment": {
+    "description": {
+      "identifier": "looting"
+    },
+    "details": {
+      "max_level": 3,
+      "min_level": 1,
+      "primary_item": "sword"
+    },
+    "frequency": "uncommon",
+    "weight": 2,
+    "effects": {
+      "mob_loot": [
+        {
+          "level": 1,
+          "multiplier": 1.0
+        },
+        {
+          "level": 2,
+          "multiplier": 2.5
+        },
+        {
+          "level": 3,
+          "multiplier": 10.0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,27 @@
+name: Build MCPACK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Create .mcpack file
+        run: |
+          # Compacta os arquivos da raiz mantendo a estrutura correta sem pastas extras
+          zip -r ModBehaviorPack.mcpack manifest.json spawn_rules/ enchantments/
+
+      - name: Upload .mcpack as Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ModBehaviorPack
+          path: ModBehaviorPack.mcpack
+          

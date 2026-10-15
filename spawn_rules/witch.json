@@ -10,8 +10,8 @@
         "minecraft:spawns_underground": {},
         "minecraft:spawns_on_surface": {},
         "minecraft:herd": {
-          "min_size": 1,
-          "max_size": 3
+          "min_size": 4,
+          "max_size": 9
         },
         "brightness_filter": {
           "min": 0,
@@ -19,7 +19,7 @@
           "adjust_for_weather": false
         },
         "weight": {
-          "default": 80
+          "default": 150
         }
       }
     ]

@@ -1,0 +1,12 @@
+{
+  "format_version": "1.21.0",
+  "meu_addon:industrial_planter": {
+    "textures": "textures/blocks/industrial_planter"
+  },
+  "meu_addon:industrial_fertilizer": {
+    "textures": "textures/blocks/industrial_fertilizer"
+  },
+  "meu_addon:industrial_harvester": {
+    "textures": "textures/blocks/industrial_harvester"
+  }
+}

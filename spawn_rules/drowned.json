@@ -9,8 +9,8 @@
       {
         "minecraft:spawns_underwater": {},
         "minecraft:herd": {
-          "min_size": 2,
-          "max_size": 6
+          "min_size": 5,
+          "max_size": 8
         },
         "brightness_filter": {
           "min": 0,
@@ -18,7 +18,7 @@
           "adjust_for_weather": false
         },
         "weight": {
-          "default": 100
+          "default": 200
         }
       }
     ]

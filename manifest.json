@@ -1,26 +1,30 @@
 {
-  "format_version": "1.8.0",
-  "minecraft:spawn_rules": {
-    "description": {
-      "identifier": "minecraft:drowned",
-      "population_control": "monster"
+  "format_version": 2,
+  "header": {
+    "name": "Add-on Supremo: Mobs, Paxel & Automação",
+    "description": "Inclui mecânicas de spawn agressivas, Paxel e Torre Industrial.",
+    "uuid": "4c9e1234-5678-90ab-cdef-1234567890ab",
+    "version": [1, 0, 0],
+    "min_engine_version": [1, 21, 0]
+  },
+  "modules": [
+    {
+      "type": "data",
+      "uuid": "5d0f2345-6789-01bc-def2-2345678901bc",
+      "version": [1, 0, 0]
     },
-    "conditions": [
-      {
-        "minecraft:spawns_underwater": {},
-        "minecraft:herd": {
-          "min_size": 3,
-          "max_size": 8
-        },
-        "brightness_filter": {
-          "min": 0,
-          "max": 0,
-          "adjust_for_weather": false
-        },
-        "weight": {
-          "default": 200
-        }
-      }
-    ]
-  }
+    {
+      "type": "script",
+      "language": "javascript",
+      "uuid": "6e1f3456-7890-12cd-ef34-3456789012cd",
+      "version": [1, 0, 0],
+      "entry": "scripts/main.js"
+    }
+  ],
+  "dependencies": [
+    {
+      "module_name": "@minecraft/server",
+      "version": "1.14.0"
+    }
+  ]
 }

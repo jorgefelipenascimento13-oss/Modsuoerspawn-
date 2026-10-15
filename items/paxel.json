@@ -1,0 +1,35 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:item": {
+    "description": {
+      "identifier": "meu_addon:paxel",
+      "menu_category": {
+        "category": "equipment",
+        "group": "itemGroup.name.tool"
+      }
+    },
+    "components": {
+      "minecraft:icon": "paxel",
+      "minecraft:display_name": {
+        "value": "Paxel Suprema"
+      },
+      "minecraft:hand_equipped": true,
+      "minecraft:max_damage": 8000,
+      "minecraft:damage": 18,
+      "minecraft:digger": {
+        "use_efficiency": true,
+        "destroy_speeds": [
+          {
+            "block": "*",
+            "speed": 60
+          }
+        ]
+      },
+      "minecraft:can_destroy_in_creative": false,
+      "minecraft:enchantable": {
+        "value": 30,
+        "slot": "all"
+      }
+    }
+  }
+}

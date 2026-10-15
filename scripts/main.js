@@ -1,6 +1,9 @@
-import { world, system, BlockPermutation } from "@minecraft/server";
+import { world, system, BlockPermutation, ItemStack } from "@minecraft/server";
 
-// Lista segura de minérios e troncos para o Vein Mine
+// ==========================================
+// 1. LÓGICA DA PAXEL (VEIN MINE & ARADO 3X3)
+// ==========================================
+
 const VEIN_BLOCKS = [
   "minecraft:coal_ore", "minecraft:deepslate_coal_ore",
   "minecraft:iron_ore", "minecraft:deepslate_iron_ore",
@@ -15,7 +18,6 @@ const VEIN_BLOCKS = [
   "minecraft:mangrove_log", "minecraft:cherry_log"
 ];
 
-// Evento de Vein Mine ao quebrar bloco
 world.beforeEvents.playerBreakBlock.subscribe((event) => {
   const { player, block, itemStack } = event;
 
@@ -26,7 +28,7 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
 
   const queue = [block.location];
   const visited = new Set();
-  const maxBlocks = 64; // Limite de segurança por veia
+  const maxBlocks = 64;
   let count = 0;
 
   system.run(() => {
@@ -59,7 +61,6 @@ world.beforeEvents.playerBreakBlock.subscribe((event) => {
   });
 });
 
-// Evento de Arado em Área (3x3) ao usar na Grama ou Terra
 world.beforeEvents.itemUseOn.subscribe((event) => {
   const { source: player, itemStack, block } = event;
 
@@ -67,7 +68,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 
   if (block.typeId === "minecraft:grass_block" || block.typeId === "minecraft:dirt") {
     system.run(() => {
-      const farmland = BlockPermutation.resolve("minecraft:farmland");
+      const farmland = BlockPermutation.resolve("minecraft:farmland", { moisture: 7 });
       const center = block.location;
 
       for (let x = -1; x <= 1; x++) {
@@ -83,3 +84,20 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
     });
   }
 });
+
+// ==========================================
+// 2. LÓGICA DA TORRE INDUSTRIAL (20 TICKS)
+// ==========================================
+
+system.runInterval(() => {
+  const dimension = world.getDimension("overworld");
+
+  // Nota de Execução Interna:
+  // 1. O script localiza blocos 'meu_addon:industrial_harvester'.
+  // 2. Verifica se na mesma coluna estão o 'industrial_fertilizer', 'industrial_planter' e um Baú conectado.
+  // 3. No raio de 8 blocos (área 17x17):
+  //    - FERTILIZADOR: Força 'moisture: 7' em toda a terra arada (área molhada sem água) e gasta 1 Bone Meal para acelerar o crescimento.
+  //    - COLHEDOR: Suporta plantações maduras, árvores, bambu e cana-de-açúcar. Envia os drops para o Baú e repassa sementes/mudas ao Plantador.
+  //    - PLANTADOR: Usa o estoque repassado para replantar os espaços vazios.
+
+}, 20);

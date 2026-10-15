@@ -1,0 +1,20 @@
+{
+  "format_version": "1.21.0",
+  "minecraft:block": {
+    "description": {
+      "identifier": "meu_addon:industrial_harvester",
+      "menu_category": {
+        "category": "items",
+        "group": "itemGroup.name.items"
+      }
+    },
+    "components": {
+      "minecraft:display_name": "Colhedor Industrial",
+      "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.5 },
+      "minecraft:geometry": "geometry.full_block",
+      "minecraft:material_instances": {
+        "*": { "texture": "industrial_harvester", "render_layer": "opaque" }
+      }
+    }
+  }
+}

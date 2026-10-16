@@ -1,36 +1,32 @@
 {
   "format_version": 2,
   "header": {
-    "name": "Add-on Supremo: Mobs, Paxel & Automação",
-    "description": "Inclui mecânicas de spawn agressivas, Paxel e Torre Industrial.",
-    "uuid": "4c9e1234-5678-90ab-cdef-1234567890ab",
+    "description": "Behavior Pack - Add-on Supremo",
+    "name": "Add-on Supremo BP",
+    "uuid": "8f888f8a-9e1b-4277-9a8b-123456789abc",
     "version": [1, 0, 0],
     "min_engine_version": [1, 21, 0]
   },
   "modules": [
     {
-      "description": "Dados do Add-on (Itens, Blocos e Receitas)",
-      "type": "data",
-      "uuid": "5d0f2345-6789-01bc-def2-2345678901bc",
-      "version": [1, 0, 0]
-    },
-    {
-      "description": "Scripts da Paxel e Automações",
+      "description": "Script do Add-on",
       "type": "script",
       "language": "javascript",
-      "uuid": "6e1f3456-7890-12cd-ef34-3456789012cd",
+      "uuid": "c33b7431-27d1-4433-8a90-987654321def",
       "version": [1, 0, 0],
       "entry": "scripts/main.js"
+    },
+    {
+      "description": "Behavior de blocos e itens",
+      "type": "data",
+      "uuid": "d44c8542-38e2-5544-9ba1-111111111111",
+      "version": [1, 0, 0]
     }
   ],
   "dependencies": [
     {
       "module_name": "@minecraft/server",
-      "version": "1.13.0"
-    },
-    {
-      "uuid": "b1b2b3b4-c5c6-d7d8-e9e0-f1f2f3f4f5f6",
-      "version": [1, 0, 0]
+      "version": "1.11.0"
     }
   ]
 }

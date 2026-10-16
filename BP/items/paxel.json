@@ -10,7 +10,7 @@
     },
     "components": {
       "minecraft:icon": "paxel",
-      "minecraft:item_name": {
+      "minecraft:display_name": {
         "value": "Paxel Suprema"
       },
       "minecraft:max_stack_size": 1,
@@ -19,6 +19,15 @@
         "max_durability": 99999
       },
       "minecraft:damage": 40,
+      "minecraft:applied_enchantments": [
+        { "enchantment": "sharpness", "level": 30 },
+        { "enchantment": "efficiency", "level": 10 },
+        { "enchantment": "looting", "level": 10 },
+        { "enchantment": "fortune", "level": 10 },
+        { "enchantment": "unbreaking", "level": 15 },
+        { "enchantment": "fire_aspect", "level": 2 },
+        { "enchantment": "mending", "level": 1 }
+      ],
       "minecraft:tags": {
         "tags": [
           "minecraft:is_pickaxe",
@@ -26,21 +35,6 @@
           "minecraft:is_shovel",
           "minecraft:is_hoe",
           "minecraft:is_sword"
-        ]
-      },
-      "minecraft:enchantable": {
-        "value": 30,
-        "slot": "all"
-      },
-      "minecraft:item_properties": {
-        "enchantments": [
-          { "name": "sharpness", "level": 30 },
-          { "name": "efficiency", "level": 10 },
-          { "name": "looting", "level": 10 },
-          { "name": "fortune", "level": 10 },
-          { "name": "unbreaking", "level": 15 },
-          { "name": "fire_aspect", "level": 2 },
-          { "name": "mending", "level": 1 }
         ]
       },
       "minecraft:digger": {

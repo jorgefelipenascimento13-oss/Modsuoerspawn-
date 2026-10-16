@@ -1,5 +1,5 @@
 {
-  "resource_pack_name": "paxel_rp",
+  "resource_type": "item_data",
   "texture_name": "atlas.items",
   "texture_data": {
     "paxel": {

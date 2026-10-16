@@ -13,7 +13,18 @@
       "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.5 },
       "minecraft:geometry": "geometry.full_block",
       "minecraft:material_instances": {
-        "*": { "texture": "industrial_harvester", "render_layer": "opaque" }
+        "sides": {
+          "texture": "stonecutter_top",
+          "render_layer": "opaque"
+        },
+        "up": {
+          "texture": "stonecutter_bottom",
+          "render_layer": "opaque"
+        },
+        "down": {
+          "texture": "stonecutter_bottom",
+          "render_layer": "opaque"
+        }
       }
     }
   }

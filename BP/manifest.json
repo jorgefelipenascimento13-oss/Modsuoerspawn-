@@ -1,7 +1,7 @@
 {
   "format_version": 2,
   "header": {
-    "description": "Behavior Pack - Add-on Supremo",
+    "description": "Behavior Pack do Add-on Supremo",
     "name": "Add-on Supremo BP",
     "uuid": "8f888f8a-9e1b-4277-9a8b-123456789abc",
     "version": [1, 0, 0],
@@ -17,7 +17,7 @@
       "entry": "scripts/main.js"
     },
     {
-      "description": "Behavior de blocos e itens",
+      "description": "Dados do Behavior",
       "type": "data",
       "uuid": "d44c8542-38e2-5544-9ba1-111111111111",
       "version": [1, 0, 0]

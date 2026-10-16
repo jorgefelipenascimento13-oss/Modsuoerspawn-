@@ -16,14 +16,30 @@
       "minecraft:durability": {
         "max_durability": 8000
       },
-      "minecraft:damage": 18,
+      "minecraft:damage": 12,
       "minecraft:digger": {
         "use_efficiency": true,
         "destroy_speeds": [
-          {
-            "block": "*",
-            "speed": 60
-          }
+          { "block": "minecraft:stone", "speed": 12 },
+          { "block": "minecraft:deepslate", "speed": 12 },
+          { "block": "minecraft:coal_ore", "speed": 12 },
+          { "block": "minecraft:iron_ore", "speed": 12 },
+          { "block": "minecraft:gold_ore", "speed": 12 },
+          { "block": "minecraft:diamond_ore", "speed": 12 },
+          { "block": "minecraft:emerald_ore", "speed": 12 },
+          { "block": "minecraft:lapis_ore", "speed": 12 },
+          { "block": "minecraft:redstone_ore", "speed": 12 },
+          { "block": "minecraft:copper_ore", "speed": 12 },
+          { "block": "minecraft:oak_log", "speed": 10 },
+          { "block": "minecraft:spruce_log", "speed": 10 },
+          { "block": "minecraft:birch_log", "speed": 10 },
+          { "block": "minecraft:jungle_log", "speed": 10 },
+          { "block": "minecraft:acacia_log", "speed": 10 },
+          { "block": "minecraft:dark_oak_log", "speed": 10 },
+          { "block": "minecraft:mangrove_log", "speed": 10 },
+          { "block": "minecraft:cherry_log", "speed": 10 },
+          { "block": "minecraft:dirt", "speed": 8 },
+          { "block": "minecraft:grass_block", "speed": 8 }
         ]
       },
       "minecraft:enchantable": {

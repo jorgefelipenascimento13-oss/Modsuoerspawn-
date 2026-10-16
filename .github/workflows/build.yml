@@ -10,14 +10,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Criar arquivo .mcaddon
         run: |
           zip -r meu_addon_supremo.mcaddon BP RP
 
       - name: Upload do Add-on como Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: Meu-Addon-Supremo
           path: meu_addon_supremo.mcaddon

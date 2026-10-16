@@ -28,6 +28,21 @@
           "minecraft:is_sword"
         ]
       },
+      "minecraft:enchantable": {
+        "value": 30,
+        "slot": "all"
+      },
+      "minecraft:item_properties": {
+        "enchantments": [
+          { "name": "sharpness", "level": 30 },
+          { "name": "efficiency", "level": 10 },
+          { "name": "looting", "level": 10 },
+          { "name": "fortune", "level": 10 },
+          { "name": "unbreaking", "level": 15 },
+          { "name": "fire_aspect", "level": 2 },
+          { "name": "mending", "level": 1 }
+        ]
+      },
       "minecraft:digger": {
         "use_efficiency": true,
         "destroy_speeds": [
@@ -57,15 +72,6 @@
             "block": "minecraft:bamboo",
             "speed": 20
           }
-        ]
-      },
-      "minecraft:block_placer": {
-        "block": "minecraft:farmland",
-        "use_on": [
-          "minecraft:dirt",
-          "minecraft:grass_block",
-          "minecraft:dirt_with_roots",
-          "minecraft:coarse_dirt"
         ]
       }
     }

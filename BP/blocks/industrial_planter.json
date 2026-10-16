@@ -1,33 +1,23 @@
 {
-  "format_version": "1.21.0",
+  "format_version": "1.20.80",
   "minecraft:block": {
     "description": {
       "identifier": "meu_addon:industrial_planter",
       "menu_category": {
         "category": "items",
-        "group": "itemGroup.name.items"
+        "group": "itemGroup.name.item"
       }
     },
     "components": {
+      "minecraft:geometry": "geometry.full_block",
+      "minecraft:material_instances": {
+        "*": {
+          "texture": "industrial_planter",
+          "render_layer": "opaque"
+        }
+      },
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 1.5
-      },
-      "minecraft:geometry": {
-        "identifier": "geometry.full_block"
-      },
-      "minecraft:material_instances": {
-        "sides": {
-          "texture": "dispenser_front_horizontal",
-          "render_method": "opaque"
-        },
-        "up": {
-          "texture": "cobblestone",
-          "render_method": "opaque"
-        },
-        "down": {
-          "texture": "cobblestone",
-          "render_method": "opaque"
-        }
       }
     }
   }

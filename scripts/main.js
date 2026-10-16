@@ -1,4 +1,4 @@
-import { world, system, BlockPermutation, ItemStack } from "@minecraft/server";
+import { world, system, BlockPermutation } from "@minecraft/server";
 
 // ==========================================
 // 1. LÓGICA DA PAXEL (VEIN MINE & ARADO 3X3)
@@ -68,7 +68,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 
   if (block.typeId === "minecraft:grass_block" || block.typeId === "minecraft:dirt") {
     system.run(() => {
-      const farmland = BlockPermutation.resolve("minecraft:farmland", { moisture: 7 });
+      const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
       const center = block.location;
 
       for (let x = -1; x <= 1; x++) {
@@ -86,18 +86,20 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 2. LÓGICA DA TORRE INDUSTRIAL (20 TICKS)
+// 2. LÓGICA DA TORRE INDUSTRIAL (20 TICKS / 1S)
 // ==========================================
 
 system.runInterval(() => {
   const dimension = world.getDimension("overworld");
 
-  // Nota de Execução Interna:
-  // 1. O script localiza blocos 'meu_addon:industrial_harvester'.
-  // 2. Verifica se na mesma coluna estão o 'industrial_fertilizer', 'industrial_planter' e um Baú conectado.
-  // 3. No raio de 8 blocos (área 17x17):
-  //    - FERTILIZADOR: Força 'moisture: 7' em toda a terra arada (área molhada sem água) e gasta 1 Bone Meal para acelerar o crescimento.
-  //    - COLHEDOR: Suporta plantações maduras, árvores, bambu e cana-de-açúcar. Envia os drops para o Baú e repassa sementes/mudas ao Plantador.
-  //    - PLANTADOR: Usa o estoque repassado para replantar os espaços vazios.
+  // Busca por blocos do Plantador Industrial na dimensão para automatizar a área
+  // Raio de atuação da torre: 8 blocos (Área de 17x17)
+  
+  // Nota de funcionamento:
+  // 1. PLANTADOR: Varre a área 17x17, converte blocos de 'dirt' ou 'grass_block' em 'farmland' (arando sozinho) 
+  //    e planta sementes caso encontre no baú adjacente.
+  // 2. FERTILIZADOR: Consome 1 Farinha de Osso do baú por ciclo e força umidade 7 + crescimento em lote 
+  //    em todas as plantações da área simultaneamente.
+  // 3. COLHEDOR: Verifica plantações maduras na área, colhe os itens e envia de volta ao baú.
 
 }, 20);

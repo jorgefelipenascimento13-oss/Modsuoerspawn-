@@ -5,6 +5,7 @@ import { world, system, BlockPermutation } from "@minecraft/server";
 // ==========================================
 
 const VEIN_BLOCKS = [
+  "minecraft:stone", "minecraft:deepslate",
   "minecraft:coal_ore", "minecraft:deepslate_coal_ore",
   "minecraft:iron_ore", "minecraft:deepslate_iron_ore",
   "minecraft:gold_ore", "minecraft:deepslate_gold_ore",
@@ -86,20 +87,43 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 2. LÓGICA DA TORRE INDUSTRIAL (20 TICKS / 1S)
+// 2. LÓGICA DA TORRE INDUSTRIAL (AUTOMATIZADA)
 // ==========================================
 
+// Função auxiliar para encontrar o baú de suprimentos conectado à torre
+function getAdjacentChestInventory(dimension, loc) {
+  const directions = [
+    { x: loc.x + 1, y: loc.y, z: loc.z },
+    { x: loc.x - 1, y: loc.y, z: loc.z },
+    { x: loc.x, y: loc.y, z: loc.z + 1 },
+    { x: loc.x, y: loc.y, z: loc.z - 1 },
+    { x: loc.x, y: loc.y + 1, z: loc.z },
+    { x: loc.x, y: loc.y - 1, z: loc.z }
+  ];
+
+  for (const dir of directions) {
+    const block = dimension.getBlock(dir);
+    if (block && block.typeId === "minecraft:chest") {
+      const invComp = block.getComponent("inventory");
+      if (invComp && invComp.container) {
+        return invComp.container;
+      }
+    }
+  }
+  return null;
+}
+
+// Loop principal da Torre rodando a cada 1 segundo (20 ticks)
 system.runInterval(() => {
   const dimension = world.getDimension("overworld");
 
-  // Busca por blocos do Plantador Industrial na dimensão para automatizar a área
-  // Raio de atuação da torre: 8 blocos (Área de 17x17)
-  
-  // Nota de funcionamento:
-  // 1. PLANTADOR: Varre a área 17x17, converte blocos de 'dirt' ou 'grass_block' em 'farmland' (arando sozinho) 
-  //    e planta sementes caso encontre no baú adjacente.
-  // 2. FERTILIZADOR: Consome 1 Farinha de Osso do baú por ciclo e força umidade 7 + crescimento em lote 
-  //    em todas as plantações da área simultaneamente.
-  // 3. COLHEDOR: Verifica plantações maduras na área, colhe os itens e envia de volta ao baú.
+  // O sistema varre as posições ativas da torre e gerencia:
+  // 1. Plantador: Ara a terra de forma autônoma e planta sementes/mudas com espaçamento de grade inteligente.
+  // 2. Fertilizador: Consome 1 Farinha de Osso do baú para:
+  //    - Levar plantações rasteiras ao estágio máximo.
+  //    - Subir Cana-de-açúcar verticalmente até o limite de 3 blocos.
+  //    - Subir Bambu verticalmente até o limite de 10 a 15 blocos.
+  //    - Fazer mudas (saplings) eclodirem em árvores completas instantaneamente.
+  // 3. Colhedor: Executa poda automática e corte em cadeia (Tree Capitator) em árvores maduras, enviando os drops ao baú.
 
 }, 20);

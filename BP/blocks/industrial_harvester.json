@@ -9,10 +9,10 @@
       }
     },
     "components": {
-      "minecraft:geometry": "geometry.full_block",
+      "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
         "*": {
-          "texture": "industrial_harvester",
+          "texture": "observer_front",
           "render_layer": "opaque"
         }
       },

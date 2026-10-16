@@ -10,41 +10,63 @@
     },
     "components": {
       "minecraft:icon": "paxel",
-      "minecraft:display_name": { "value": "Paxel Suprema" },
+      "minecraft:item_name": {
+        "value": "Paxel Suprema"
+      },
       "minecraft:max_stack_size": 1,
       "minecraft:hand_equipped": true,
       "minecraft:durability": {
-        "max_durability": 8000
+        "max_durability": 99999
       },
-      "minecraft:damage": 12,
+      "minecraft:damage": 40,
+      "minecraft:tags": {
+        "tags": [
+          "minecraft:is_pickaxe",
+          "minecraft:is_axe",
+          "minecraft:is_shovel",
+          "minecraft:is_hoe",
+          "minecraft:is_sword"
+        ]
+      },
       "minecraft:digger": {
         "use_efficiency": true,
         "destroy_speeds": [
-          { "block": "minecraft:stone", "speed": 12 },
-          { "block": "minecraft:deepslate", "speed": 12 },
-          { "block": "minecraft:coal_ore", "speed": 12 },
-          { "block": "minecraft:iron_ore", "speed": 12 },
-          { "block": "minecraft:gold_ore", "speed": 12 },
-          { "block": "minecraft:diamond_ore", "speed": 12 },
-          { "block": "minecraft:emerald_ore", "speed": 12 },
-          { "block": "minecraft:lapis_ore", "speed": 12 },
-          { "block": "minecraft:redstone_ore", "speed": 12 },
-          { "block": "minecraft:copper_ore", "speed": 12 },
-          { "block": "minecraft:oak_log", "speed": 10 },
-          { "block": "minecraft:spruce_log", "speed": 10 },
-          { "block": "minecraft:birch_log", "speed": 10 },
-          { "block": "minecraft:jungle_log", "speed": 10 },
-          { "block": "minecraft:acacia_log", "speed": 10 },
-          { "block": "minecraft:dark_oak_log", "speed": 10 },
-          { "block": "minecraft:mangrove_log", "speed": 10 },
-          { "block": "minecraft:cherry_log", "speed": 10 },
-          { "block": "minecraft:dirt", "speed": 8 },
-          { "block": "minecraft:grass_block", "speed": 8 }
+          {
+            "block": {
+              "tags": "q.any_tag('stone', 'metal', 'diamond', 'iron', 'gold', 'emerald', 'lapis', 'redstone')"
+            },
+            "speed": 18
+          },
+          {
+            "block": {
+              "tags": "q.any_tag('wood', 'log')"
+            },
+            "speed": 16
+          },
+          {
+            "block": {
+              "tags": "q.any_tag('dirt', 'sand', 'gravel', 'grass')"
+            },
+            "speed": 14
+          },
+          {
+            "block": "minecraft:web",
+            "speed": 20
+          },
+          {
+            "block": "minecraft:bamboo",
+            "speed": 20
+          }
         ]
       },
-      "minecraft:enchantable": {
-        "value": 30,
-        "slot": "all"
+      "minecraft:block_placer": {
+        "block": "minecraft:farmland",
+        "use_on": [
+          "minecraft:dirt",
+          "minecraft:grass_block",
+          "minecraft:dirt_with_roots",
+          "minecraft:coarse_dirt"
+        ]
       }
     }
   }

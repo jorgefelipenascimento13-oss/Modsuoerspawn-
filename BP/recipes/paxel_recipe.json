@@ -1,10 +1,15 @@
 {
-  "format_version": "1.21.0",
+  "format_version": "1.20.80",
   "minecraft:recipe_shaped": {
     "description": {
       "identifier": "meu_addon:paxel_recipe"
     },
     "tags": ["crafting_table"],
+    "unlock": [
+      {
+        "item": "minecraft:diamond_pickaxe"
+      }
+    ],
     "pattern": [
       "PAS",
       " H ",

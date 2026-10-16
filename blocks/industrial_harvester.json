@@ -9,13 +9,16 @@
       }
     },
     "components": {
-      "minecraft:display_name": "Colhedor Industrial",
-      "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.5 },
-      "minecraft:geometry": "geometry.stonecutter",
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.5
+      },
+      "minecraft:geometry": {
+        "identifier": "geometry.stonecutter"
+      },
       "minecraft:material_instances": {
         "*": {
           "texture": "stonecutter_top",
-          "render_layer": "opaque"
+          "render_method": "opaque"
         }
       }
     }

@@ -4,7 +4,7 @@
     "description": {
       "identifier": "meu_addon:paxel_recipe"
     },
-    "tags": [ "crafting_table" ],
+    "tags": ["crafting_table"],
     "pattern": [
       "PAS",
       " H ",
@@ -18,7 +18,8 @@
       "C": { "item": "minecraft:diamond_sword" }
     },
     "result": {
-      "loot": "loot_tables/paxel_craft.json"
+      "item": "meu_addon:paxel",
+      "count": 1
     }
   }
 }

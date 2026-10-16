@@ -9,21 +9,24 @@
       }
     },
     "components": {
-      "minecraft:display_name": "Plantador Industrial",
-      "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.5 },
-      "minecraft:geometry": "geometry.full_block",
+      "minecraft:destructible_by_mining": {
+        "seconds_to_destroy": 1.5
+      },
+      "minecraft:geometry": {
+        "identifier": "geometry.full_block"
+      },
       "minecraft:material_instances": {
         "sides": {
           "texture": "dispenser_front_horizontal",
-          "render_layer": "opaque"
+          "render_method": "opaque"
         },
         "up": {
           "texture": "cobblestone",
-          "render_layer": "opaque"
+          "render_method": "opaque"
         },
         "down": {
           "texture": "cobblestone",
-          "render_layer": "opaque"
+          "render_method": "opaque"
         }
       }
     }

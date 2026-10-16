@@ -1,5 +1,5 @@
 {
-  "format_version": "1.12.0",
+  "format_version": "1.21.0",
   "minecraft:recipe_shaped": {
     "description": {
       "identifier": "meu_addon:paxel_recipe"
@@ -8,31 +8,17 @@
     "pattern": [
       "PAS",
       " H ",
-      " B "
+      " C "
     ],
     "key": {
       "P": { "item": "minecraft:diamond_pickaxe" },
       "A": { "item": "minecraft:diamond_axe" },
-      "S": { "item": "minecraft:diamond_sword" },
+      "S": { "item": "minecraft:diamond_shovel" },
       "H": { "item": "minecraft:diamond_hoe" },
-      "B": { "item": "minecraft:diamond_shovel" }
+      "C": { "item": "minecraft:diamond_sword" }
     },
     "result": {
-      "item": "meu_addon:paxel",
-      "count": 1,
-      "components": {
-        "minecraft:enchantments": {
-          "enchantments": [
-            { "name": "sharpness", "level": 30 },
-            { "name": "efficiency", "level": 10 },
-            { "name": "fortune", "level": 10 },
-            { "name": "looting", "level": 10 },
-            { "name": "unbreaking", "level": 15 },
-            { "name": "fire_aspect", "level": 2 },
-            { "name": "mending", "level": 1 }
-          ]
-        }
-      }
+      "loot": "loot_tables/paxel_craft.json"
     }
   }
 }

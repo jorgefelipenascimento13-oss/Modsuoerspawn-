@@ -13,12 +13,18 @@
       "minecraft:destructible_by_mining": { "seconds_to_destroy": 1.5 },
       "minecraft:geometry": "geometry.full_block",
       "minecraft:material_instances": {
-        "*": { "texture": "industrial_planter", "render_layer": "opaque" }
-      },
-      "minecraft:inventory": {
-        "container_size": 27,
-        "inventory_size": 27,
-        "private": false
+        "sides": {
+          "texture": "dispenser_front_horizontal",
+          "render_layer": "opaque"
+        },
+        "up": {
+          "texture": "cobblestone",
+          "render_layer": "opaque"
+        },
+        "down": {
+          "texture": "cobblestone",
+          "render_layer": "opaque"
+        }
       }
     }
   }

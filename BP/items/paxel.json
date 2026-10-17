@@ -19,15 +19,10 @@
         "max_durability": 99999
       },
       "minecraft:damage": 40,
-      "minecraft:applied_enchantments": [
-        { "enchantment": "sharpness", "level": 30 },
-        { "enchantment": "efficiency", "level": 10 },
-        { "enchantment": "looting", "level": 10 },
-        { "enchantment": "fortune", "level": 10 },
-        { "enchantment": "unbreaking", "level": 15 },
-        { "enchantment": "fire_aspect", "level": 2 },
-        { "enchantment": "mending", "level": 1 }
-      ],
+      "minecraft:enchantable": {
+        "value": 30,
+        "slot": "all"
+      },
       "minecraft:tags": {
         "tags": [
           "minecraft:is_pickaxe",

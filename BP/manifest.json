@@ -4,7 +4,7 @@
     "description": "Behavior Pack do Add-on Supremo",
     "name": "Add-on Supremo BP",
     "uuid": "8f888f8a-9e1b-4277-9a8b-123456789abc",
-    "version": [1, 0, 0],
+    "version": [1, 0, 1],
     "min_engine_version": [1, 21, 0]
   },
   "modules": [
@@ -13,14 +13,14 @@
       "type": "script",
       "language": "javascript",
       "uuid": "c33b7431-27d1-4433-8a90-987654321def",
-      "version": [1, 0, 0],
+      "version": [1, 0, 1],
       "entry": "scripts/main.js"
     },
     {
       "description": "Dados do Behavior",
       "type": "data",
       "uuid": "d44c8542-38e2-5544-9ba1-111111111111",
-      "version": [1, 0, 0]
+      "version": [1, 0, 1]
     }
   ],
   "dependencies": [

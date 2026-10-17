@@ -11,8 +11,28 @@
     "components": {
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
-        "*": {
-          "texture": "observer_front",
+        "up": {
+          "texture": "stonecutter_bottom",
+          "render_layer": "opaque"
+        },
+        "down": {
+          "texture": "stonecutter_bottom",
+          "render_layer": "opaque"
+        },
+        "north": {
+          "texture": "stonecutter_top",
+          "render_layer": "opaque"
+        },
+        "south": {
+          "texture": "stonecutter_top",
+          "render_layer": "opaque"
+        },
+        "east": {
+          "texture": "stonecutter_top",
+          "render_layer": "opaque"
+        },
+        "west": {
+          "texture": "stonecutter_top",
           "render_layer": "opaque"
         }
       },

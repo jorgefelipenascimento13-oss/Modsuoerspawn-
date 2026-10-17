@@ -32,7 +32,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 1. LÓGICA DA PAXEL (VEIN MINE & ARADO 3X3)
+// 1. LÓGICA DA PAXEL (AUTO-ENCANTAMENTO, VEIN MINE & ARADO 3X3)
 // ==========================================
 
 const VEIN_BLOCKS = new Set([
@@ -49,6 +49,35 @@ const VEIN_BLOCKS = new Set([
   "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
   "minecraft:mangrove_log", "minecraft:cherry_log"
 ]);
+
+// AUTO-ENCANTAR A PAXEL AO SEGURAR
+system.runInterval(() => {
+  for (const player of world.getAllPlayers()) {
+    const inventory = player.getComponent("inventory");
+    if (!inventory || !inventory.container) continue;
+
+    const mainHand = inventory.container.getItem(player.selectedSlotIndex);
+    if (mainHand && mainHand.typeId === "meu_addon:paxel") {
+      try {
+        const enchantComp = mainHand.getComponent("enchantments");
+        if (enchantComp) {
+          const encs = enchantComp.container;
+          // Verifica se já está encantada, senão aplica
+          if (encs && !encs.hasEnchantment({ type: "sharpness" })) {
+            encs.addEnchantment({ type: "sharpness", level: 30 });
+            encs.addEnchantment({ type: "efficiency", level: 10 });
+            encs.addEnchantment({ type: "looting", level: 10 });
+            encs.addEnchantment({ type: "fortune", level: 10 });
+            encs.addEnchantment({ type: "unbreaking", level: 15 });
+            encs.addEnchantment({ type: "fire_aspect", level: 2 });
+            encs.addEnchantment({ type: "mending", level: 1 });
+            inventory.container.setItem(player.selectedSlotIndex, mainHand);
+          }
+        }
+      } catch (e) {}
+    }
+  }
+}, 10);
 
 // VEIN MINE
 world.afterEvents.playerBreakBlock.subscribe((event) => {
@@ -97,7 +126,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   });
 });
 
-// ARADO 3X3 (SEM CRIAR BLOCOS POR CIMA E COM DELAY DE SEGURANÇA)
+// ARADO 3X3
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const { player, block } = event;
   

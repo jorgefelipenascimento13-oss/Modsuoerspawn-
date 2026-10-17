@@ -16,7 +16,7 @@
           "render_layer": "opaque"
         },
         "down": {
-          "texture": "dropper_bottom",
+          "texture": "dropper_top",
           "render_layer": "opaque"
         },
         "north": {

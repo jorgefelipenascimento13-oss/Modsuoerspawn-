@@ -11,8 +11,28 @@
     "components": {
       "minecraft:geometry": "minecraft:geometry.full_block",
       "minecraft:material_instances": {
-        "*": {
-          "texture": "composter_side",
+        "up": {
+          "texture": "dropper_top",
+          "render_layer": "opaque"
+        },
+        "down": {
+          "texture": "dropper_bottom",
+          "render_layer": "opaque"
+        },
+        "north": {
+          "texture": "dropper_side",
+          "render_layer": "opaque"
+        },
+        "south": {
+          "texture": "dropper_side",
+          "render_layer": "opaque"
+        },
+        "east": {
+          "texture": "dropper_side",
+          "render_layer": "opaque"
+        },
+        "west": {
+          "texture": "dropper_side",
           "render_layer": "opaque"
         }
       },

@@ -36,26 +36,85 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 1. AUTO-ENCANTAR A PAXEL E RESTAURAR DURABILIDADE
+// 1. APLICADOR DE ENCANTAMENTOS SUPREMOS E REPARO DE DURABILIDADE
 // ==========================================
+function applySupremeEnchantsAndRepair(item) {
+  if (!item || item.typeId !== "meu_addon:paxel") return false;
+
+  let modified = false;
+
+  // Reparo de Durabilidade
+  const durabilityComp = item.getComponent("durability");
+  if (durabilityComp && durabilityComp.damage > 0) {
+    durabilityComp.damage = 0;
+    modified = true;
+  }
+
+  // Encantamentos em Níveis Supremos
+  const enchantComp = item.getComponent("enchantable");
+  if (enchantComp) {
+    const desiredEnchants = [
+      { type: "sharpness", level: 30 },
+      { type: "efficiency", level: 10 },
+      { type: "unbreaking", level: 15 },
+      { type: "fortune", level: 10 },
+      { type: "looting", level: 10 },
+      { type: "mending", level: 1 }
+    ];
+
+    for (const ench of desiredEnchants) {
+      const current = enchantComp.getEnchantment(ench.type);
+      if (!current || current.level < ench.level) {
+        enchantComp.addEnchantment({ type: ench.type, level: ench.level });
+        modified = true;
+      }
+    }
+  }
+
+  return modified;
+}
+
+// Loop contínuo para manter os encantamentos e reparar o item na mão do jogador
 system.runInterval(() => {
   try {
     for (const player of world.getAllPlayers()) {
       const inventory = player.getComponent("inventory");
       if (!inventory || !inventory.container) continue;
 
-      const item = inventory.container.getItem(player.selectedSlotIndex);
+      const slotIndex = player.selectedSlotIndex;
+      const item = inventory.container.getItem(slotIndex);
+
       if (item && item.typeId === "meu_addon:paxel") {
-        player.runCommandAsync("enchant @s sharpness 5");
-        player.runCommandAsync("enchant @s efficiency 5");
-        player.runCommandAsync("enchant @s unbreaking 3");
-        player.runCommandAsync("enchant @s fortune 3");
-        player.runCommandAsync("enchant @s looting 3");
-        player.runCommandAsync("enchant @s mending 1");
+        if (applySupremeEnchantsAndRepair(item)) {
+          inventory.container.setItem(slotIndex, item);
+        }
       }
     }
   } catch (e) {}
-}, 20);
+}, 10);
+
+// Prevenção imediata de perda de durabilidade durante ataques a entidades
+world.afterEvents.entityHurt.subscribe((event) => {
+  try {
+    const damageSource = event.damageSource;
+    if (damageSource && damageSource.damagingEntity && damageSource.damagingEntity.typeId === "minecraft:player") {
+      const player = damageSource.damagingEntity;
+      const inventory = player.getComponent("inventory");
+      if (!inventory || !inventory.container) return;
+
+      const slotIndex = player.selectedSlotIndex;
+      const item = inventory.container.getItem(slotIndex);
+
+      if (item && item.typeId === "meu_addon:paxel") {
+        const durabilityComp = item.getComponent("durability");
+        if (durabilityComp) {
+          durabilityComp.damage = 0;
+          inventory.container.setItem(slotIndex, item);
+        }
+      }
+    }
+  } catch (e) {}
+});
 
 // ==========================================
 // 2. LÓGICA DO VEIN MINE
@@ -72,7 +131,8 @@ const VEIN_BLOCKS = new Set([
   "minecraft:copper_ore", "minecraft:deepslate_copper_ore",
   "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
   "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
-  "minecraft:mangrove_log", "minecraft:cherry_log"
+  "minecraft:mangrove_log", "minecraft:cherry_log",
+  "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
@@ -84,6 +144,13 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
     const mainHand = inventory.container.getItem(player.selectedSlotIndex);
     if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
+
+    // Repara o item no momento da mineração
+    const durabilityComp = mainHand.getComponent("durability");
+    if (durabilityComp) {
+      durabilityComp.damage = 0;
+      inventory.container.setItem(player.selectedSlotIndex, mainHand);
+    }
 
     const blockTypeId = brokenBlockPermutation.type.id;
     if (!VEIN_BLOCKS.has(blockTypeId)) return;
@@ -171,18 +238,8 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 4. FUNÇÕES DE INVENTÁRIO
+// 4. GERENCIAMENTO DE BAÚS
 // ==========================================
-function getBlockContainer(block) {
-  try {
-    const invComp = block.getComponent("inventory");
-    if (invComp && invComp.container) {
-      return invComp.container;
-    }
-  } catch (e) {}
-  return null;
-}
-
 function getAdjacentChestContainer(dimension, loc) {
   try {
     const directions = [
@@ -247,8 +304,28 @@ function addItemToContainer(container, itemTypeId, amount = 1) {
   }
 }
 
+const SAPLINGS = {
+  "minecraft:oak_sapling": "minecraft:oak_log",
+  "minecraft:spruce_sapling": "minecraft:spruce_log",
+  "minecraft:birch_sapling": "minecraft:birch_log",
+  "minecraft:jungle_sapling": "minecraft:jungle_log",
+  "minecraft:acacia_sapling": "minecraft:acacia_log",
+  "minecraft:dark_oak_sapling": "minecraft:dark_oak_log",
+  "minecraft:cherry_sapling": "minecraft:cherry_log",
+  "minecraft:crimson_fungus": "minecraft:crimson_stem",
+  "minecraft:warped_fungus": "minecraft:warped_stem"
+};
+
+const LOGS = new Set([
+  "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
+  "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
+  "minecraft:cherry_log", "minecraft:mangrove_log",
+  "minecraft:crimson_stem", "minecraft:warped_stem",
+  "minecraft:stripped_crimson_stem", "minecraft:stripped_warped_stem"
+]);
+
 // ==========================================
-// 5. AUTOMAÇÃO DAS TORRES (3D 17x17x17)
+// 5. AUTOMAÇÃO SUPREMA (CUBO 17x17x17)
 // ==========================================
 system.runInterval(() => {
   try {
@@ -261,10 +338,10 @@ system.runInterval(() => {
         continue;
       }
 
-      const selfContainer = getBlockContainer(block);
-      if (!selfContainer) continue;
+      const machineChest = getAdjacentChestContainer(dimension, location);
+      if (!machineChest) continue;
 
-      const radius = 8; // Cubo de 17x17x17
+      const radius = 8; // Cubo 3D 17x17x17
 
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = -radius; dy <= radius; dy++) {
@@ -275,115 +352,143 @@ system.runInterval(() => {
 
             if (!groundBlock || !aboveBlock) continue;
 
-            // 1. PLANTADOR INDUSTRIAL
+            // 1. PLANTADOR INTELIGENTE
             if (type === "meu_addon:industrial_planter") {
-              if (groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block") {
-                const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
-                groundBlock.setPermutation(farmland);
-              } else if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
-                const seeds = ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"];
-                for (const seedId of seeds) {
-                  if (consumeItemFromContainer(selfContainer, seedId, 1)) {
-                    const cropMap = {
-                      "minecraft:wheat_seeds": "minecraft:wheat",
-                      "minecraft:carrot": "minecraft:carrots",
-                      "minecraft:potato": "minecraft:potatoes",
-                      "minecraft:beetroot_seeds": "minecraft:beetroot"
-                    };
-                    aboveBlock.setType(cropMap[seedId]);
-                    break;
+              let hasCactus = false;
+              let hasSaplingOrFungus = false;
+              let hasCrops = false;
+
+              for (let i = 0; i < machineChest.size; i++) {
+                const itemInChest = machineChest.getItem(i);
+                if (itemInChest) {
+                  if (itemInChest.typeId === "minecraft:cactus") hasCactus = true;
+                  if (SAPLINGS[itemInChest.typeId]) hasSaplingOrFungus = true;
+                  if (["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"].includes(itemInChest.typeId)) hasCrops = true;
+                }
+              }
+
+              if (hasCactus && (groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block")) {
+                groundBlock.setType("minecraft:sand");
+              }
+              if (groundBlock.typeId === "minecraft:sand" && aboveBlock.typeId === "minecraft:air") {
+                if (consumeItemFromContainer(machineChest, "minecraft:cactus", 1)) {
+                  aboveBlock.setType("minecraft:cactus");
+                }
+              }
+
+              if (hasSaplingOrFungus && (groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block" || groundBlock.typeId === "minecraft:crimson_nylium" || groundBlock.typeId === "minecraft:warped_nylium")) {
+                if (aboveBlock.typeId === "minecraft:air") {
+                  for (const saplingId of Object.keys(SAPLINGS)) {
+                    if (consumeItemFromContainer(machineChest, saplingId, 1)) {
+                      aboveBlock.setType(saplingId);
+                      break;
+                    }
                   }
+                }
+              }
+
+              if (hasCrops) {
+                if (groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block") {
+                  const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
+                  groundBlock.setPermutation(farmland);
+                } else if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
+                  const seeds = ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"];
+                  for (const seedId of seeds) {
+                    if (consumeItemFromContainer(machineChest, seedId, 1)) {
+                      const cropMap = {
+                        "minecraft:wheat_seeds": "minecraft:wheat",
+                        "minecraft:carrot": "minecraft:carrots",
+                        "minecraft:potato": "minecraft:potatoes",
+                        "minecraft:beetroot_seeds": "minecraft:beetroot"
+                      };
+                      aboveBlock.setType(cropMap[seedId]);
+                      break;
+                    }
+                  }
+                }
+              }
+
+              if (aboveBlock.typeId === "minecraft:air") {
+                if ((groundBlock.typeId === "minecraft:sand" || groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block") && consumeItemFromContainer(machineChest, "minecraft:reeds", 1)) {
+                  aboveBlock.setType("minecraft:reeds");
+                } else if ((groundBlock.typeId === "minecraft:sand" || groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block") && consumeItemFromContainer(machineChest, "minecraft:bamboo", 1)) {
+                  aboveBlock.setType("minecraft:bamboo");
                 }
               }
             }
 
-            // 2. FERTILIZADOR INDUSTRIAL
+            // 2. FERTILIZADOR SUPREMO
             if (type === "meu_addon:industrial_fertilizer") {
-              const crops = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
-              if (crops.includes(aboveBlock.typeId)) {
-                if (consumeItemFromContainer(selfContainer, "minecraft:bone_meal", 1)) {
+              const isSapling = Object.keys(SAPLINGS).includes(aboveBlock.typeId);
+              const isCactusOrReed = aboveBlock.typeId === "minecraft:cactus" || aboveBlock.typeId === "minecraft:reeds" || aboveBlock.typeId === "minecraft:bamboo";
+              const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
+
+              if (growable.includes(aboveBlock.typeId) || isSapling || isCactusOrReed) {
+                if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
                   try {
-                    aboveBlock.setPermutation(aboveBlock.permutation.withState("growth", 7));
+                    if (isSapling) {
+                      dimension.runCommand(`placefeature minecraft:oak_tree ${targetLoc.x} ${targetLoc.y + 1} ${targetLoc.z}`);
+                      aboveBlock.setType("minecraft:air");
+                    } else if (isCactusOrReed) {
+                      const blockAbove1 = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 1, z: targetLoc.z });
+                      const blockAbove2 = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 2, z: targetLoc.z });
+                      
+                      if (blockAbove1 && blockAbove1.typeId === "minecraft:air") {
+                        blockAbove1.setType(aboveBlock.typeId);
+                      } else if (blockAbove2 && blockAbove2.typeId === "minecraft:air") {
+                        blockAbove2.setType(aboveBlock.typeId);
+                      }
+                    } else {
+                      aboveBlock.setPermutation(aboveBlock.permutation.withState("growth", 7));
+                    }
                   } catch (e) {}
                 }
               }
             }
 
-            // 3. COLHEDOR INDUSTRIAL (Geometria Stonecutter + Roteamento de Itens)
+            // 3. COLHEDOR SUPREMO
             if (type === "meu_addon:industrial_harvester") {
-              let harvestedType = null;
-              let seedType = null;
-              let dropAmount = 1;
-
               if (aboveBlock.typeId === "minecraft:wheat") {
-                let isMaxGrowth = false;
-                try { isMaxGrowth = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
-                if (isMaxGrowth) {
-                  harvestedType = "minecraft:wheat";
-                  seedType = "minecraft:wheat_seeds";
+                let isMax = false;
+                try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                if (isMax) {
+                  aboveBlock.setType("minecraft:air");
+                  addItemToContainer(machineChest, "minecraft:wheat", 1);
+                  addItemToContainer(machineChest, "minecraft:wheat_seeds", 1);
                 }
               } else if (aboveBlock.typeId === "minecraft:carrots") {
-                let isMaxGrowth = false;
-                try { isMaxGrowth = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
-                if (isMaxGrowth) {
-                  harvestedType = "minecraft:carrot";
-                  seedType = "minecraft:carrot";
-                  dropAmount = 2;
+                let isMax = false;
+                try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                if (isMax) {
+                  aboveBlock.setType("minecraft:air");
+                  addItemToContainer(machineChest, "minecraft:carrot", 2);
                 }
               } else if (aboveBlock.typeId === "minecraft:potatoes") {
-                let isMaxGrowth = false;
-                try { isMaxGrowth = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
-                if (isMaxGrowth) {
-                  harvestedType = "minecraft:potato";
-                  seedType = "minecraft:potato";
-                  dropAmount = 2;
+                let isMax = false;
+                try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                if (isMax) {
+                  aboveBlock.setType("minecraft:air");
+                  addItemToContainer(machineChest, "minecraft:potato", 2);
                 }
               }
 
-              if (harvestedType) {
+              if (aboveBlock.typeId === "minecraft:reeds" || aboveBlock.typeId === "minecraft:bamboo" || aboveBlock.typeId === "minecraft:cactus") {
+                const blockAbove2 = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 2, z: targetLoc.z });
+                
+                let itemType = "minecraft:sugar_cane";
+                if (aboveBlock.typeId === "minecraft:bamboo") itemType = "minecraft:bamboo";
+                if (aboveBlock.typeId === "minecraft:cactus") itemType = "minecraft:cactus";
+
+                if (blockAbove2 && blockAbove2.typeId === aboveBlock.typeId) {
+                  blockAbove2.setType("minecraft:air");
+                  addItemToContainer(machineChest, itemType, 1);
+                }
+              }
+
+              if (LOGS.has(aboveBlock.typeId)) {
+                const logType = aboveBlock.typeId;
                 aboveBlock.setType("minecraft:air");
-
-                // Envia semente para o Plantador vizinho
-                let sentSeed = false;
-                if (seedType) {
-                  const directions = [
-                    { x: location.x + 1, y: location.y, z: location.z },
-                    { x: location.x - 1, y: location.y, z: location.z },
-                    { x: location.x, y: location.y, z: location.z + 1 },
-                    { x: location.x, y: location.y, z: location.z - 1 },
-                    { x: location.x, y: location.y + 1, z: location.z },
-                    { x: location.x, y: location.y - 1, z: location.z }
-                  ];
-
-                  for (const dir of directions) {
-                    const neighborBlock = dimension.getBlock(dir);
-                    if (neighborBlock && neighborBlock.typeId === "meu_addon:industrial_planter") {
-                      const planterContainer = getBlockContainer(neighborBlock);
-                      if (planterContainer && addItemToContainer(planterContainer, seedType, 1)) {
-                        sentSeed = true;
-                        break;
-                      }
-                    }
-                  }
-                }
-
-                // Envia produto colhido para o Baú externo ou Inventário Próprio
-                const externalChest = getAdjacentChestContainer(dimension, location);
-                let storedInChest = false;
-
-                if (externalChest) {
-                  storedInChest = addItemToContainer(externalChest, harvestedType, dropAmount);
-                  if (seedType && !sentSeed) {
-                    addItemToContainer(externalChest, seedType, 1);
-                  }
-                }
-
-                if (!storedInChest) {
-                  addItemToContainer(selfContainer, harvestedType, dropAmount);
-                  if (seedType && !sentSeed) {
-                    addItemToContainer(selfContainer, seedType, 1);
-                  }
-                }
+                addItemToContainer(machineChest, logType, 1);
               }
             }
 

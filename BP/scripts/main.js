@@ -5,22 +5,69 @@ import { world, system, BlockPermutation, ItemStack } from "@minecraft/server";
 // ==========================================
 const activeTowers = new Map();
 
-world.afterEvents.playerPlaceBlock.subscribe((event) => {
+// Rastreamento correto de colocação de blocos customizados via itemUseOn
+world.afterEvents.itemUseOn.subscribe((event) => {
   try {
-    const { block, dimension } = event;
-    const typeId = block.typeId;
+    const { itemStack, block, blockFace, dimension } = event;
+    if (!itemStack) return;
 
+    const typeId = itemStack.typeId;
     if (
       typeId === "meu_addon:industrial_planter" ||
       typeId === "meu_addon:industrial_fertilizer" ||
       typeId === "meu_addon:industrial_harvester"
     ) {
-      const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
+      const offsets = {
+        "Up": { x: 0, y: 1, z: 0 },
+        "Down": { x: 0, y: -1, z: 0 },
+        "North": { x: 0, y: 0, z: -1 },
+        "South": { x: 0, y: 0, z: 1 },
+        "East": { x: 1, y: 0, z: 0 },
+        "West": { x: -1, y: 0, z: 0 }
+      };
+      const off = offsets[blockFace] || { x: 0, y: 0, z: 0 };
+      const targetLoc = {
+        x: block.location.x + off.x,
+        y: block.location.y + off.y,
+        z: block.location.z + off.z
+      };
+      const key = `${targetLoc.x},${targetLoc.y},${targetLoc.z},${dimension.id}`;
       activeTowers.set(key, {
         type: typeId,
-        location: block.location,
+        location: targetLoc,
         dimension: dimension
       });
+    }
+
+    // ARADO 3X3 (Interação da Paxel com o solo)
+    if (itemStack.typeId === "meu_addon:paxel") {
+      const validSoil = new Set([
+        "minecraft:grass_block",
+        "minecraft:dirt",
+        "minecraft:dirt_with_roots",
+        "minecraft:coarse_dirt"
+      ]);
+
+      if (validSoil.has(block.typeId)) {
+        const center = block.location;
+        system.run(() => {
+          try {
+            for (let x = -1; x <= 1; x++) {
+              for (let z = -1; z <= 1; z++) {
+                const exactLoc = { x: center.x + x, y: center.y, z: center.z + z };
+                const targetBlock = dimension.getBlock(exactLoc);
+
+                if (targetBlock && validSoil.has(targetBlock.typeId)) {
+                  const blockAbove = dimension.getBlock({ x: exactLoc.x, y: exactLoc.y + 1, z: exactLoc.z });
+                  if (blockAbove && blockAbove.typeId === "minecraft:air") {
+                    dimension.runCommand(`setblock ${exactLoc.x} ${exactLoc.y} ${exactLoc.z} farmland`);
+                  }
+                }
+              }
+            }
+          } catch (err) {}
+        });
+      }
     }
   } catch (e) {}
 });
@@ -36,45 +83,8 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 1. APLICADOR DE ENCANTAMENTOS SUPREMOS E REPARO DE DURABILIDADE
+// 1. GERENCIAMENTO DA PAXEL (Durabilidade e Encantamentos com Namespace)
 // ==========================================
-function applySupremeEnchantsAndRepair(item) {
-  if (!item || item.typeId !== "meu_addon:paxel") return false;
-
-  let modified = false;
-
-  // Reparo de Durabilidade
-  const durabilityComp = item.getComponent("durability");
-  if (durabilityComp && durabilityComp.damage > 0) {
-    durabilityComp.damage = 0;
-    modified = true;
-  }
-
-  // Encantamentos em Níveis Supremos
-  const enchantComp = item.getComponent("enchantable");
-  if (enchantComp) {
-    const desiredEnchants = [
-      { type: "sharpness", level: 30 },
-      { type: "efficiency", level: 10 },
-      { type: "unbreaking", level: 15 },
-      { type: "fortune", level: 10 },
-      { type: "looting", level: 10 },
-      { type: "mending", level: 1 }
-    ];
-
-    for (const ench of desiredEnchants) {
-      const current = enchantComp.getEnchantment(ench.type);
-      if (!current || current.level < ench.level) {
-        enchantComp.addEnchantment({ type: ench.type, level: ench.level });
-        modified = true;
-      }
-    }
-  }
-
-  return modified;
-}
-
-// Loop contínuo para manter os encantamentos e reparar o item na mão do jogador
 system.runInterval(() => {
   try {
     for (const player of world.getAllPlayers()) {
@@ -85,15 +95,23 @@ system.runInterval(() => {
       const item = inventory.container.getItem(slotIndex);
 
       if (item && item.typeId === "meu_addon:paxel") {
-        if (applySupremeEnchantsAndRepair(item)) {
+        const durabilityComp = item.getComponent("minecraft:durability");
+        if (durabilityComp && durabilityComp.damage > 0) {
+          durabilityComp.damage = 0;
           inventory.container.setItem(slotIndex, item);
         }
+
+        player.runCommandAsync("enchant @s sharpness 5");
+        player.runCommandAsync("enchant @s efficiency 5");
+        player.runCommandAsync("enchant @s unbreaking 3");
+        player.runCommandAsync("enchant @s fortune 3");
+        player.runCommandAsync("enchant @s looting 3");
+        player.runCommandAsync("enchant @s mending 1");
       }
     }
   } catch (e) {}
-}, 10);
+}, 20);
 
-// Prevenção imediata de perda de durabilidade durante ataques a entidades
 world.afterEvents.entityHurt.subscribe((event) => {
   try {
     const damageSource = event.damageSource;
@@ -106,7 +124,7 @@ world.afterEvents.entityHurt.subscribe((event) => {
       const item = inventory.container.getItem(slotIndex);
 
       if (item && item.typeId === "meu_addon:paxel") {
-        const durabilityComp = item.getComponent("durability");
+        const durabilityComp = item.getComponent("minecraft:durability");
         if (durabilityComp) {
           durabilityComp.damage = 0;
           inventory.container.setItem(slotIndex, item);
@@ -117,7 +135,7 @@ world.afterEvents.entityHurt.subscribe((event) => {
 });
 
 // ==========================================
-// 2. LÓGICA DO VEIN MINE
+// 2. VEIN MINE
 // ==========================================
 const VEIN_BLOCKS = new Set([
   "minecraft:stone", "minecraft:deepslate",
@@ -145,8 +163,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
     const mainHand = inventory.container.getItem(player.selectedSlotIndex);
     if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
 
-    // Repara o item no momento da mineração
-    const durabilityComp = mainHand.getComponent("durability");
+    const durabilityComp = mainHand.getComponent("minecraft:durability");
     if (durabilityComp) {
       durabilityComp.damage = 0;
       inventory.container.setItem(player.selectedSlotIndex, mainHand);
@@ -194,51 +211,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 3. ARADO 3X3
-// ==========================================
-world.afterEvents.playerInteractWithBlock.subscribe((event) => {
-  try {
-    const { player, block } = event;
-    
-    const inventory = player.getComponent("inventory");
-    if (!inventory || !inventory.container) return;
-
-    const mainHand = inventory.container.getItem(player.selectedSlotIndex);
-    if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
-
-    const validSoil = new Set([
-      "minecraft:grass_block",
-      "minecraft:dirt",
-      "minecraft:dirt_with_roots",
-      "minecraft:coarse_dirt"
-    ]);
-
-    if (validSoil.has(block.typeId)) {
-      const center = block.location;
-
-      system.run(() => {
-        try {
-          for (let x = -1; x <= 1; x++) {
-            for (let z = -1; z <= 1; z++) {
-              const exactLoc = { x: center.x + x, y: center.y, z: center.z + z };
-              const targetBlock = player.dimension.getBlock(exactLoc);
-
-              if (targetBlock && validSoil.has(targetBlock.typeId)) {
-                const blockAbove = player.dimension.getBlock({ x: exactLoc.x, y: exactLoc.y + 1, z: exactLoc.z });
-                if (blockAbove && blockAbove.typeId === "minecraft:air") {
-                  player.dimension.runCommand(`setblock ${exactLoc.x} ${exactLoc.y} ${exactLoc.z} farmland`);
-                }
-              }
-            }
-          }
-        } catch (err) {}
-      });
-    }
-  } catch (e) {}
-});
-
-// ==========================================
-// 4. GERENCIAMENTO DE BAÚS
+// 3. AUXILIARES DE BAÚ
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -320,12 +293,11 @@ const LOGS = new Set([
   "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
   "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
   "minecraft:cherry_log", "minecraft:mangrove_log",
-  "minecraft:crimson_stem", "minecraft:warped_stem",
-  "minecraft:stripped_crimson_stem", "minecraft:stripped_warped_stem"
+  "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
 // ==========================================
-// 5. AUTOMAÇÃO SUPREMA (CUBO 17x17x17)
+// 4. AUTOMAÇÃO DE TORRES (CUBO 17x17x17)
 // ==========================================
 system.runInterval(() => {
   try {
@@ -341,7 +313,7 @@ system.runInterval(() => {
       const machineChest = getAdjacentChestContainer(dimension, location);
       if (!machineChest) continue;
 
-      const radius = 8; // Cubo 3D 17x17x17
+      const radius = 8; // Cubo 3D de 17x17x17
 
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = -radius; dy <= radius; dy++) {
@@ -417,7 +389,7 @@ system.runInterval(() => {
               }
             }
 
-            // 2. FERTILIZADOR SUPREMO
+            // 2. FERTILIZADOR SUPREMO (Com comando corrigido 'place feature')
             if (type === "meu_addon:industrial_fertilizer") {
               const isSapling = Object.keys(SAPLINGS).includes(aboveBlock.typeId);
               const isCactusOrReed = aboveBlock.typeId === "minecraft:cactus" || aboveBlock.typeId === "minecraft:reeds" || aboveBlock.typeId === "minecraft:bamboo";
@@ -427,7 +399,7 @@ system.runInterval(() => {
                 if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
                   try {
                     if (isSapling) {
-                      dimension.runCommand(`placefeature minecraft:oak_tree ${targetLoc.x} ${targetLoc.y + 1} ${targetLoc.z}`);
+                      dimension.runCommand(`place feature minecraft:oak_tree ${targetLoc.x} ${targetLoc.y + 1} ${targetLoc.z}`);
                       aboveBlock.setType("minecraft:air");
                     } else if (isCactusOrReed) {
                       const blockAbove1 = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 1, z: targetLoc.z });

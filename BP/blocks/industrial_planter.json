@@ -18,7 +18,7 @@
       },
       "minecraft:inventory": {
         "inventory_type": "container",
-        "size": 5
+        "size": 27
       },
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 1.5

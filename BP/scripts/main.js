@@ -36,9 +36,30 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 1. LÓGICA DA PAXEL (VEIN MINE & ARADO 3X3)
+// 1. AUTO-ENCANTAR A PAXEL E RESTAURAR DURABILIDADE
 // ==========================================
+system.runInterval(() => {
+  try {
+    for (const player of world.getAllPlayers()) {
+      const inventory = player.getComponent("inventory");
+      if (!inventory || !inventory.container) continue;
 
+      const item = inventory.container.getItem(player.selectedSlotIndex);
+      if (item && item.typeId === "meu_addon:paxel") {
+        player.runCommandAsync("enchant @s sharpness 5");
+        player.runCommandAsync("enchant @s efficiency 5");
+        player.runCommandAsync("enchant @s unbreaking 3");
+        player.runCommandAsync("enchant @s fortune 3");
+        player.runCommandAsync("enchant @s looting 3");
+        player.runCommandAsync("enchant @s mending 1");
+      }
+    }
+  } catch (e) {}
+}, 20);
+
+// ==========================================
+// 2. LÓGICA DO VEIN MINE
+// ==========================================
 const VEIN_BLOCKS = new Set([
   "minecraft:stone", "minecraft:deepslate",
   "minecraft:coal_ore", "minecraft:deepslate_coal_ore",
@@ -54,7 +75,6 @@ const VEIN_BLOCKS = new Set([
   "minecraft:mangrove_log", "minecraft:cherry_log"
 ]);
 
-// VEIN MINE SEGURO
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   try {
     const { player, brokenBlockPermutation, block } = event;
@@ -106,7 +126,9 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// ARADO 3X3 SEGURO
+// ==========================================
+// 3. ARADO 3X3
+// ==========================================
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   try {
     const { player, block } = event;
@@ -125,7 +147,6 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
     ]);
 
     if (validSoil.has(block.typeId)) {
-      const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
       const center = block.location;
 
       system.run(() => {
@@ -138,7 +159,7 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
               if (targetBlock && validSoil.has(targetBlock.typeId)) {
                 const blockAbove = player.dimension.getBlock({ x: exactLoc.x, y: exactLoc.y + 1, z: exactLoc.z });
                 if (blockAbove && blockAbove.typeId === "minecraft:air") {
-                  targetBlock.setPermutation(farmland);
+                  player.dimension.runCommand(`setblock ${exactLoc.x} ${exactLoc.y} ${exactLoc.z} farmland`);
                 }
               }
             }
@@ -150,8 +171,17 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 2. FUNÇÕES AUXILIARES DE INVENTÁRIO
+// 4. FUNÇÕES DE INVENTÁRIO
 // ==========================================
+function getBlockContainer(block) {
+  try {
+    const invComp = block.getComponent("inventory");
+    if (invComp && invComp.container) {
+      return invComp.container;
+    }
+  } catch (e) {}
+  return null;
+}
 
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -218,9 +248,8 @@ function addItemToContainer(container, itemTypeId, amount = 1) {
 }
 
 // ==========================================
-// 3. AUTOMAÇÃO DAS TORRES (1 SEGUNDO)
+// 5. AUTOMAÇÃO DAS TORRES (3D 17x17x17)
 // ==========================================
-
 system.runInterval(() => {
   try {
     for (const [key, tower] of activeTowers.entries()) {
@@ -232,91 +261,135 @@ system.runInterval(() => {
         continue;
       }
 
-      const chestContainer = getAdjacentChestContainer(dimension, location);
-      if (!chestContainer) continue;
+      const selfContainer = getBlockContainer(block);
+      if (!selfContainer) continue;
 
-      const radius = 4;
-      const baseY = location.y;
+      const radius = 8; // Cubo de 17x17x17
 
       for (let dx = -radius; dx <= radius; dx++) {
-        for (let dz = -radius; dz <= radius; dz++) {
-          const targetLoc = { x: location.x + dx, y: baseY, z: location.z + dz };
-          const groundBlock = dimension.getBlock(targetLoc);
-          const aboveBlock = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 1, z: targetLoc.z });
+        for (let dy = -radius; dy <= radius; dy++) {
+          for (let dz = -radius; dz <= radius; dz++) {
+            const targetLoc = { x: location.x + dx, y: location.y + dy, z: location.z + dz };
+            const groundBlock = dimension.getBlock(targetLoc);
+            const aboveBlock = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 1, z: targetLoc.z });
 
-          if (!groundBlock || !aboveBlock) continue;
+            if (!groundBlock || !aboveBlock) continue;
 
-          // 1. PLANTADOR
-          if (type === "meu_addon:industrial_planter") {
-            if (groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block") {
-              const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
-              groundBlock.setPermutation(farmland);
-            } else if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
-              const seeds = ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"];
-              for (const seedId of seeds) {
-                if (consumeItemFromContainer(chestContainer, seedId, 1)) {
-                  const cropMap = {
-                    "minecraft:wheat_seeds": "minecraft:wheat",
-                    "minecraft:carrot": "minecraft:carrots",
-                    "minecraft:potato": "minecraft:potatoes",
-                    "minecraft:beetroot_seeds": "minecraft:beetroot"
-                  };
-                  aboveBlock.setType(cropMap[seedId]);
-                  break;
+            // 1. PLANTADOR INDUSTRIAL
+            if (type === "meu_addon:industrial_planter") {
+              if (groundBlock.typeId === "minecraft:dirt" || groundBlock.typeId === "minecraft:grass_block") {
+                const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
+                groundBlock.setPermutation(farmland);
+              } else if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
+                const seeds = ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"];
+                for (const seedId of seeds) {
+                  if (consumeItemFromContainer(selfContainer, seedId, 1)) {
+                    const cropMap = {
+                      "minecraft:wheat_seeds": "minecraft:wheat",
+                      "minecraft:carrot": "minecraft:carrots",
+                      "minecraft:potato": "minecraft:potatoes",
+                      "minecraft:beetroot_seeds": "minecraft:beetroot"
+                    };
+                    aboveBlock.setType(cropMap[seedId]);
+                    break;
+                  }
                 }
               }
             }
-          }
 
-          // 2. FERTILIZADOR
-          if (type === "meu_addon:industrial_fertilizer") {
-            const crops = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
-            if (crops.includes(aboveBlock.typeId)) {
-              if (consumeItemFromContainer(chestContainer, "minecraft:bone_meal", 1)) {
-                try {
-                  aboveBlock.setPermutation(aboveBlock.permutation.withState("growth", 7));
-                } catch (e) {}
-              }
-            } else if (aboveBlock.typeId === "minecraft:sugar_cane") {
-              if (consumeItemFromContainer(chestContainer, "minecraft:bone_meal", 1)) {
-                let topY = targetLoc.y + 1;
-                let height = 0;
-                while (dimension.getBlock({ x: targetLoc.x, y: topY, z: targetLoc.z })?.typeId === "minecraft:sugar_cane" && height < 3) {
-                  topY++;
-                  height++;
-                }
-                if (height < 3 && dimension.getBlock({ x: targetLoc.x, y: topY, z: targetLoc.z })?.typeId === "minecraft:air") {
-                  dimension.getBlock({ x: targetLoc.x, y: topY, z: targetLoc.z }).setType("minecraft:sugar_cane");
+            // 2. FERTILIZADOR INDUSTRIAL
+            if (type === "meu_addon:industrial_fertilizer") {
+              const crops = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
+              if (crops.includes(aboveBlock.typeId)) {
+                if (consumeItemFromContainer(selfContainer, "minecraft:bone_meal", 1)) {
+                  try {
+                    aboveBlock.setPermutation(aboveBlock.permutation.withState("growth", 7));
+                  } catch (e) {}
                 }
               }
             }
-          }
 
-          // 3. COLHEDOR
-          if (type === "meu_addon:industrial_harvester") {
-            if (aboveBoxTest(aboveBlock)) { // fallback check
-              // handled below
-            }
-            if (aboveBlock.typeId === "minecraft:wheat") {
-              let isMaxGrowth = false;
-              try {
-                isMaxGrowth = aboveBlock.permutation.getState("growth") === 7;
-              } catch (e) {}
+            // 3. COLHEDOR INDUSTRIAL (Geometria Stonecutter + Roteamento de Itens)
+            if (type === "meu_addon:industrial_harvester") {
+              let harvestedType = null;
+              let seedType = null;
+              let dropAmount = 1;
 
-              if (isMaxGrowth) {
+              if (aboveBlock.typeId === "minecraft:wheat") {
+                let isMaxGrowth = false;
+                try { isMaxGrowth = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                if (isMaxGrowth) {
+                  harvestedType = "minecraft:wheat";
+                  seedType = "minecraft:wheat_seeds";
+                }
+              } else if (aboveBlock.typeId === "minecraft:carrots") {
+                let isMaxGrowth = false;
+                try { isMaxGrowth = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                if (isMaxGrowth) {
+                  harvestedType = "minecraft:carrot";
+                  seedType = "minecraft:carrot";
+                  dropAmount = 2;
+                }
+              } else if (aboveBlock.typeId === "minecraft:potatoes") {
+                let isMaxGrowth = false;
+                try { isMaxGrowth = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                if (isMaxGrowth) {
+                  harvestedType = "minecraft:potato";
+                  seedType = "minecraft:potato";
+                  dropAmount = 2;
+                }
+              }
+
+              if (harvestedType) {
                 aboveBlock.setType("minecraft:air");
-                addItemToContainer(chestContainer, "minecraft:wheat", 1);
-                addItemToContainer(chestContainer, "minecraft:wheat_seeds", 1);
+
+                // Envia semente para o Plantador vizinho
+                let sentSeed = false;
+                if (seedType) {
+                  const directions = [
+                    { x: location.x + 1, y: location.y, z: location.z },
+                    { x: location.x - 1, y: location.y, z: location.z },
+                    { x: location.x, y: location.y, z: location.z + 1 },
+                    { x: location.x, y: location.y, z: location.z - 1 },
+                    { x: location.x, y: location.y + 1, z: location.z },
+                    { x: location.x, y: location.y - 1, z: location.z }
+                  ];
+
+                  for (const dir of directions) {
+                    const neighborBlock = dimension.getBlock(dir);
+                    if (neighborBlock && neighborBlock.typeId === "meu_addon:industrial_planter") {
+                      const planterContainer = getBlockContainer(neighborBlock);
+                      if (planterContainer && addItemToContainer(planterContainer, seedType, 1)) {
+                        sentSeed = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+
+                // Envia produto colhido para o Baú externo ou Inventário Próprio
+                const externalChest = getAdjacentChestContainer(dimension, location);
+                let storedInChest = false;
+
+                if (externalChest) {
+                  storedInChest = addItemToContainer(externalChest, harvestedType, dropAmount);
+                  if (seedType && !sentSeed) {
+                    addItemToContainer(externalChest, seedType, 1);
+                  }
+                }
+
+                if (!storedInChest) {
+                  addItemToContainer(selfContainer, harvestedType, dropAmount);
+                  if (seedType && !sentSeed) {
+                    addItemToContainer(selfContainer, seedType, 1);
+                  }
+                }
               }
             }
-          }
 
+          }
         }
       }
     }
   } catch (e) {}
 }, 20);
-
-function aboveBoxTest(block) {
-  return block && block.typeId;
-}

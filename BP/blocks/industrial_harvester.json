@@ -11,26 +11,30 @@
     "components": {
       "minecraft:geometry": "geometry.stonecutter",
       "minecraft:material_instances": {
-        "*": {
-          "texture": "stonecutter_saw",
-          "render_layer": "cutout"
-        },
-        "bottom": {
-          "texture": "stonecutter_bottom",
-          "render_layer": "opaque"
-        },
-        "top": {
+        "up": {
           "texture": "stonecutter_top",
           "render_layer": "opaque"
         },
-        "side": {
+        "down": {
+          "texture": "stonecutter_bottom",
+          "render_layer": "opaque"
+        },
+        "north": {
+          "texture": "stonecutter_side",
+          "render_layer": "opaque"
+        },
+        "south": {
+          "texture": "stonecutter_side",
+          "render_layer": "opaque"
+        },
+        "east": {
+          "texture": "stonecutter_side",
+          "render_layer": "opaque"
+        },
+        "west": {
           "texture": "stonecutter_side",
           "render_layer": "opaque"
         }
-      },
-      "minecraft:inventory": {
-        "inventory_type": "container",
-        "size": 27
       },
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 1.5

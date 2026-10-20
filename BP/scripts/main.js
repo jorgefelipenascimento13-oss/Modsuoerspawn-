@@ -5,23 +5,28 @@ import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@mine
 // ==========================================
 const activeTowers = new Map();
 
-world.afterEvents.playerPlaceBlock.subscribe((event) => {
-  try {
-    const { block, dimension } = event;
-    const typeId = block.typeId;
-
-    if (
-      typeId === "meu_addon:industrial_planter" ||
-      typeId === "meu_addon:industrial_fertilizer" ||
-      typeId === "meu_addon:industrial_harvester"
-    ) {
-      const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
+function registerTower(block, dimension) {
+  if (!block || !dimension) return;
+  const typeId = block.typeId;
+  if (
+    typeId === "meu_addon:industrial_planter" ||
+    typeId === "meu_addon:industrial_fertilizer" ||
+    typeId === "meu_addon:industrial_harvester"
+  ) {
+    const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
+    if (!activeTowers.has(key)) {
       activeTowers.set(key, {
         type: typeId,
         location: block.location,
         dimension: dimension
       });
     }
+  }
+}
+
+world.afterEvents.playerPlaceBlock.subscribe((event) => {
+  try {
+    registerTower(event.block, event.dimension);
   } catch (e) {}
 });
 
@@ -35,8 +40,14 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
+world.afterEvents.playerInteractWithBlock.subscribe((event) => {
+  try {
+    registerTower(event.block, event.player.dimension);
+  } catch (e) {}
+});
+
 // ==========================================
-// 1. GERENCIAMENTO DA PAXEL (Durabilidade e Encantamentos)
+// 1. GERENCIAMENTO DA PAXEL (Durabilidade Infinita e Encantamentos)
 // ==========================================
 system.runInterval(() => {
   try {
@@ -61,45 +72,9 @@ system.runInterval(() => {
   } catch (e) {}
 }, 20);
 
-world.afterEvents.entityHurt.subscribe((event) => {
-  try {
-    const damageSource = event.damageSource;
-    if (damageSource && damageSource.damagingEntity && damageSource.damagingEntity.typeId === "minecraft:player") {
-      const player = damageSource.damagingEntity;
-      const equippable = player.getComponent("equippable");
-      if (!equippable) return;
-
-      const item = equippable.getEquipment(EquipmentSlot.Mainhand);
-      if (item && item.typeId === "meu_addon:paxel") {
-        const durabilityComp = item.getComponent("minecraft:durability");
-        if (durabilityComp) {
-          durabilityComp.damage = 0;
-          equippable.setEquipment(EquipmentSlot.Mainhand, item);
-        }
-      }
-    }
-  } catch (e) {}
-});
-
 // ==========================================
-// 2. VEIN MINE, FORTUNE CUSTOMIZADO E ARADO/DESCASCAR
+// 2. VEIN MINE UNIVERSAL (Ativado ao Agachar) E FORTUNE
 // ==========================================
-const VEIN_BLOCKS = new Set([
-  "minecraft:stone", "minecraft:deepslate",
-  "minecraft:coal_ore", "minecraft:deepslate_coal_ore",
-  "minecraft:iron_ore", "minecraft:deepslate_iron_ore",
-  "minecraft:gold_ore", "minecraft:deepslate_gold_ore",
-  "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore",
-  "minecraft:emerald_ore", "minecraft:deepslate_emerald_ore",
-  "minecraft:lapis_ore", "minecraft:deepslate_lapis_ore",
-  "minecraft:redstone_ore", "minecraft:deepslate_redstone_ore",
-  "minecraft:copper_ore", "minecraft:deepslate_copper_ore",
-  "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
-  "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
-  "minecraft:mangrove_log", "minecraft:cherry_log",
-  "minecraft:crimson_stem", "minecraft:warped_stem"
-]);
-
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
   "minecraft:deepslate_diamond_ore": "minecraft:diamond",
@@ -125,15 +100,7 @@ const STRIPPED_LOGS = {
   "minecraft:mangrove_log": "minecraft:stripped_mangrove_log",
   "minecraft:cherry_log": "minecraft:stripped_cherry_log",
   "minecraft:crimson_stem": "minecraft:stripped_crimson_stem",
-  "minecraft:warped_stem": "minecraft:stripped_warped_stem",
-  "minecraft:oak_wood": "minecraft:stripped_oak_wood",
-  "minecraft:spruce_wood": "minecraft:stripped_spruce_wood",
-  "minecraft:birch_wood": "minecraft:stripped_birch_wood",
-  "minecraft:jungle_wood": "minecraft:stripped_jungle_wood",
-  "minecraft:acacia_wood": "minecraft:stripped_acacia_wood",
-  "minecraft:dark_oak_wood": "minecraft:stripped_dark_oak_wood",
-  "minecraft:mangrove_wood": "minecraft:stripped_mangrove_wood",
-  "minecraft:cherry_wood": "minecraft:stripped_cherry_wood"
+  "minecraft:warped_stem": "minecraft:stripped_warped_stem"
 };
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
@@ -146,27 +113,22 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
     const mainHand = equippable.getEquipment(EquipmentSlot.Mainhand);
     if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
 
-    const durabilityComp = mainHand.getComponent("minecraft:durability");
-    if (durabilityComp) {
-      durabilityComp.damage = 0;
-      equippable.setEquipment(EquipmentSlot.Mainhand, mainHand);
-    }
-
     const blockTypeId = brokenBlockPermutation.type.id;
 
-    // Fortune Customizado no primeiro bloco quebrado
+    // Fortune customizado no bloco inicial
     if (ORE_DROPS[blockTypeId]) {
       const dropItem = ORE_DROPS[blockTypeId];
       const bonusAmount = Math.floor(Math.random() * 4) + 3; 
       block.dimension.spawnItem(new ItemStack(dropItem, bonusAmount), block.location);
     }
 
-    if (!VEIN_BLOCKS.has(blockTypeId)) return;
+    // Só ativa o Vein Mine universal se o jogador estiver agachado (sneaking)
+    if (!player.isSneaking) return;
 
     const initialLoc = block.location;
     const queue = [initialLoc];
     const visited = new Set();
-    const maxBlocks = 64;
+    const maxBlocks = 256; // Perfeito para árvores gigantes ou veios enormes
     let count = 0;
 
     system.run(() => {
@@ -212,13 +174,12 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Ações ao interagir (Arado 3x3 e Descascar Madeira)
+// Arado 3x3 e Descascar Madeira ao interagir
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
-    const { player, itemStack, block, dimension } = event;
+    const { itemStack, block, dimension } = event;
     if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
 
-    // 1. Arado 3x3 (Enxada)
     const validSoil = new Set([
       "minecraft:grass_block",
       "minecraft:dirt",
@@ -248,7 +209,6 @@ world.afterEvents.itemUseOn.subscribe((event) => {
       return;
     }
 
-    // 2. Descascar Madeira (Machado)
     if (STRIPPED_LOGS[block.typeId]) {
       const strippedId = STRIPPED_LOGS[block.typeId];
       dimension.runCommand(`setblock ${block.location.x} ${block.location.y} ${block.location.z} ${strippedId}`);
@@ -257,7 +217,7 @@ world.afterEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. AUXILIARES E TORRES INDUSTRIAIS
+// 3. AUXILIARES DE BAÚ E TORRES INDUSTRIAIS
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -342,9 +302,23 @@ const LOGS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
-// Loop das Torres Industriais
 system.runInterval(() => {
   try {
+    for (const player of world.getAllPlayers()) {
+      const px = Math.floor(player.location.x);
+      const py = Math.floor(player.location.y);
+      const pz = Math.floor(player.location.z);
+      
+      for (let x = -5; x <= 5; x++) {
+        for (let y = -3; y <= 3; y++) {
+          for (let z = -5; z <= 5; z++) {
+            const b = player.dimension.getBlock({ x: px + x, y: py + y, z: pz + z });
+            if (b) registerTower(b, player.dimension);
+          }
+        }
+      }
+    }
+
     for (const [key, tower] of activeTowers.entries()) {
       const { type, location, dimension } = tower;
       const block = dimension.getBlock(location);
@@ -355,9 +329,9 @@ system.runInterval(() => {
       }
 
       const machineChest = getAdjacentChestContainer(dimension, location);
-      if (!machineChest) continue; // ATENÇÃO: A torre precisa de um baú/barril adjacente para funcionar!
+      if (!machineChest) continue;
 
-      const radius = 8; // Cubo 3D de 17x17x17
+      const radius = 8; // Cubo 17x17x17
 
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = -radius; dy <= radius; dy++) {

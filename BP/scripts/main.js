@@ -1,73 +1,26 @@
-import { world, system, BlockPermutation, ItemStack } from "@minecraft/server";
+import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@minecraft/server";
 
 // ==========================================
 // REGISTRO GLOBAL DE TORRES INDUSTRIAIS
 // ==========================================
 const activeTowers = new Map();
 
-// Rastreamento correto de colocação de blocos customizados via itemUseOn
-world.afterEvents.itemUseOn.subscribe((event) => {
+world.afterEvents.playerPlaceBlock.subscribe((event) => {
   try {
-    const { itemStack, block, blockFace, dimension } = event;
-    if (!itemStack) return;
+    const { block, dimension } = event;
+    const typeId = block.typeId;
 
-    const typeId = itemStack.typeId;
     if (
       typeId === "meu_addon:industrial_planter" ||
       typeId === "meu_addon:industrial_fertilizer" ||
       typeId === "meu_addon:industrial_harvester"
     ) {
-      const offsets = {
-        "Up": { x: 0, y: 1, z: 0 },
-        "Down": { x: 0, y: -1, z: 0 },
-        "North": { x: 0, y: 0, z: -1 },
-        "South": { x: 0, y: 0, z: 1 },
-        "East": { x: 1, y: 0, z: 0 },
-        "West": { x: -1, y: 0, z: 0 }
-      };
-      const off = offsets[blockFace] || { x: 0, y: 0, z: 0 };
-      const targetLoc = {
-        x: block.location.x + off.x,
-        y: block.location.y + off.y,
-        z: block.location.z + off.z
-      };
-      const key = `${targetLoc.x},${targetLoc.y},${targetLoc.z},${dimension.id}`;
+      const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
       activeTowers.set(key, {
         type: typeId,
-        location: targetLoc,
+        location: block.location,
         dimension: dimension
       });
-    }
-
-    // ARADO 3X3 (Interação da Paxel com o solo)
-    if (itemStack.typeId === "meu_addon:paxel") {
-      const validSoil = new Set([
-        "minecraft:grass_block",
-        "minecraft:dirt",
-        "minecraft:dirt_with_roots",
-        "minecraft:coarse_dirt"
-      ]);
-
-      if (validSoil.has(block.typeId)) {
-        const center = block.location;
-        system.run(() => {
-          try {
-            for (let x = -1; x <= 1; x++) {
-              for (let z = -1; z <= 1; z++) {
-                const exactLoc = { x: center.x + x, y: center.y, z: center.z + z };
-                const targetBlock = dimension.getBlock(exactLoc);
-
-                if (targetBlock && validSoil.has(targetBlock.typeId)) {
-                  const blockAbove = dimension.getBlock({ x: exactLoc.x, y: exactLoc.y + 1, z: exactLoc.z });
-                  if (blockAbove && blockAbove.typeId === "minecraft:air") {
-                    dimension.runCommand(`setblock ${exactLoc.x} ${exactLoc.y} ${exactLoc.z} farmland`);
-                  }
-                }
-              }
-            }
-          } catch (err) {}
-        });
-      }
     }
   } catch (e) {}
 });
@@ -83,29 +36,25 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 1. GERENCIAMENTO DA PAXEL (Durabilidade e Encantamentos com Namespace)
+// 1. GERENCIAMENTO DA PAXEL (Durabilidade e Encantamentos)
 // ==========================================
 system.runInterval(() => {
   try {
     for (const player of world.getAllPlayers()) {
-      const inventory = player.getComponent("inventory");
-      if (!inventory || !inventory.container) continue;
+      const equippable = player.getComponent("equippable");
+      if (!equippable) continue;
 
-      const slotIndex = player.selectedSlotIndex;
-      const item = inventory.container.getItem(slotIndex);
-
+      const item = equippable.getEquipment(EquipmentSlot.Mainhand);
       if (item && item.typeId === "meu_addon:paxel") {
         const durabilityComp = item.getComponent("minecraft:durability");
         if (durabilityComp && durabilityComp.damage > 0) {
           durabilityComp.damage = 0;
-          inventory.container.setItem(slotIndex, item);
+          equippable.setEquipment(EquipmentSlot.Mainhand, item);
         }
 
         player.runCommandAsync("enchant @s sharpness 5");
         player.runCommandAsync("enchant @s efficiency 5");
         player.runCommandAsync("enchant @s unbreaking 3");
-        player.runCommandAsync("enchant @s fortune 3");
-        player.runCommandAsync("enchant @s looting 3");
         player.runCommandAsync("enchant @s mending 1");
       }
     }
@@ -117,17 +66,15 @@ world.afterEvents.entityHurt.subscribe((event) => {
     const damageSource = event.damageSource;
     if (damageSource && damageSource.damagingEntity && damageSource.damagingEntity.typeId === "minecraft:player") {
       const player = damageSource.damagingEntity;
-      const inventory = player.getComponent("inventory");
-      if (!inventory || !inventory.container) return;
+      const equippable = player.getComponent("equippable");
+      if (!equippable) return;
 
-      const slotIndex = player.selectedSlotIndex;
-      const item = inventory.container.getItem(slotIndex);
-
+      const item = equippable.getEquipment(EquipmentSlot.Mainhand);
       if (item && item.typeId === "meu_addon:paxel") {
         const durabilityComp = item.getComponent("minecraft:durability");
         if (durabilityComp) {
           durabilityComp.damage = 0;
-          inventory.container.setItem(slotIndex, item);
+          equippable.setEquipment(EquipmentSlot.Mainhand, item);
         }
       }
     }
@@ -135,7 +82,7 @@ world.afterEvents.entityHurt.subscribe((event) => {
 });
 
 // ==========================================
-// 2. VEIN MINE
+// 2. VEIN MINE, ARADO 3X3 E FORTUNE CUSTOMIZADO
 // ==========================================
 const VEIN_BLOCKS = new Set([
   "minecraft:stone", "minecraft:deepslate",
@@ -153,23 +100,48 @@ const VEIN_BLOCKS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
+// Mapeamento de minérios para os itens que eles dropam (Simulando Fortune Alto)
+const ORE_DROPS = {
+  "minecraft:diamond_ore": "minecraft:diamond",
+  "minecraft:deepslate_diamond_ore": "minecraft:diamond",
+  "minecraft:emerald_ore": "minecraft:emerald",
+  "minecraft:deepslate_emerald_ore": "minecraft:emerald",
+  "minecraft:coal_ore": "minecraft:coal",
+  "minecraft:deepslate_coal_ore": "minecraft:coal",
+  "minecraft:nether_quartz_ore": "minecraft:quartz",
+  "minecraft:nether_gold_ore": "minecraft:gold_nugget",
+  "minecraft:lapis_ore": "minecraft:lapis_lazuli",
+  "minecraft:deepslate_lapis_ore": "minecraft:lapis_lazuli",
+  "minecraft:redstone_ore": "minecraft:redstone",
+  "minecraft:deepslate_redstone_ore": "minecraft:redstone"
+};
+
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   try {
     const { player, brokenBlockPermutation, block } = event;
     
-    const inventory = player.getComponent("inventory");
-    if (!inventory || !inventory.container) return;
+    const equippable = player.getComponent("equippable");
+    if (!equippable) return;
 
-    const mainHand = inventory.container.getItem(player.selectedSlotIndex);
+    const mainHand = equippable.getEquipment(EquipmentSlot.Mainhand);
     if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
 
     const durabilityComp = mainHand.getComponent("minecraft:durability");
     if (durabilityComp) {
       durabilityComp.damage = 0;
-      inventory.container.setItem(player.selectedSlotIndex, mainHand);
+      equippable.setEquipment(EquipmentSlot.Mainhand, mainHand);
     }
 
     const blockTypeId = brokenBlockPermutation.type.id;
+
+    // === SISTEMA DE FORTUNE CUSTOMIZADO (Ex: Multiplicador equivalente a Nível 5 ~ 8) ===
+    if (ORE_DROPS[blockTypeId]) {
+      const dropItem = ORE_DROPS[blockTypeId];
+      // Gera entre 3 a 6 itens extras além do padrão do jogo
+      const bonusAmount = Math.floor(Math.random() * 4) + 3; 
+      block.dimension.spawnItem(new ItemStack(dropItem, bonusAmount), block.location);
+    }
+
     if (!VEIN_BLOCKS.has(blockTypeId)) return;
 
     const queue = [block.location];
@@ -188,8 +160,16 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
           const targetBlock = player.dimension.getBlock(loc);
           if (targetBlock && targetBlock.typeId === blockTypeId) {
+            const currentTypeId = targetBlock.typeId;
             player.dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
             count++;
+
+            // Aplica Fortune customizado também nos blocos quebrados em cadeia pelo Vein Mine
+            if (ORE_DROPS[currentTypeId]) {
+              const dropItem = ORE_DROPS[currentTypeId];
+              const bonusAmount = Math.floor(Math.random() * 4) + 3;
+              player.dimension.spawnItem(new ItemStack(dropItem, bonusAmount), loc);
+            }
 
             const neighbors = [
               { x: loc.x + 1, y: loc.y, z: loc.z },
@@ -211,7 +191,77 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// 3. AUXILIARES DE BAÚ
+// 3. SISTEMA DE LOOTING CUSTOMIZADO (M紆 Mortos)
+// ==========================================
+world.afterEvents.entityDie.subscribe((event) => {
+  try {
+    const { damageSource, deadEntity } = event;
+    if (!damageSource || !damageSource.damagingEntity) return;
+
+    const killer = damageSource.damagingEntity;
+    if (killer.typeId !== "minecraft:player") return;
+
+    const equippable = killer.getComponent("equippable");
+    if (!equippable) return;
+
+    const mainHand = equippable.getEquipment(EquipmentSlot.Mainhand);
+    if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
+
+    // Simula Pilhagem Alta (Looting) gerando drops extras baseados no tipo de mob
+    const loc = deadEntity.location;
+    const dim = deadEntity.dimension;
+
+    if (deadEntity.typeId === "minecraft:zombie" || deadEntity.typeId === "minecraft:husk") {
+      dim.spawnItem(new ItemStack("minecraft:rotten_flesh", Math.floor(Math.random() * 5) + 3), loc);
+      if (Math.random() < 0.3) dim.spawnItem(new ItemStack("minecraft:iron_ingot", 1), loc);
+    } else if (deadEntity.typeId === "minecraft:skeleton") {
+      dim.spawnItem(new ItemStack("minecraft:bone", Math.floor(Math.random() * 5) + 3), loc);
+      dim.spawnItem(new ItemStack("minecraft:arrow", Math.floor(Math.random() * 4) + 2), loc);
+    } else if (deadEntity.typeId === "minecraft:spider" || deadEntity.typeId === "minecraft:cave_spider") {
+      dim.spawnItem(new ItemStack("minecraft:string", Math.floor(Math.random() * 4) + 2), loc);
+      dim.spawnItem(new ItemStack("minecraft:spider_eye", Math.floor(Math.random() * 2) + 1), loc);
+    }
+  } catch (e) {}
+});
+
+// Arado 3x3 com a Paxel
+world.afterEvents.itemUseOn.subscribe((event) => {
+  try {
+    const { player, itemStack, block, dimension } = event;
+    if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
+
+    const validSoil = new Set([
+      "minecraft:grass_block",
+      "minecraft:dirt",
+      "minecraft:dirt_with_roots",
+      "minecraft:coarse_dirt"
+    ]);
+
+    if (validSoil.has(block.typeId)) {
+      const center = block.location;
+      system.run(() => {
+        try {
+          for (let x = -1; x <= 1; x++) {
+            for (let z = -1; z <= 1; z++) {
+              const exactLoc = { x: center.x + x, y: center.y, z: center.z + z };
+              const targetBlock = dimension.getBlock(exactLoc);
+
+              if (targetBlock && validSoil.has(targetBlock.typeId)) {
+                const blockAbove = dimension.getBlock({ x: exactLoc.x, y: exactLoc.y + 1, z: exactLoc.z });
+                if (blockAbove && blockAbove.typeId === "minecraft:air") {
+                  dimension.runCommand(`setblock ${exactLoc.x} ${exactLoc.y} ${exactLoc.z} farmland`);
+                }
+              }
+            }
+          }
+        } catch (err) {}
+      });
+    }
+  } catch (e) {}
+});
+
+// ==========================================
+// 4. AUXILIARES DE BAÚ E TORRES INDUSTRIAIS (Mantidos Iguais)
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -296,9 +346,7 @@ const LOGS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
-// ==========================================
-// 4. AUTOMAÇÃO DE TORRES (CUBO 17x17x17)
-// ==========================================
+// Loop das Torres Industriais (Mantido idêntico)
 system.runInterval(() => {
   try {
     for (const [key, tower] of activeTowers.entries()) {
@@ -389,7 +437,7 @@ system.runInterval(() => {
               }
             }
 
-            // 2. FERTILIZADOR SUPREMO (Com comando corrigido 'place feature')
+            // 2. FERTILIZADOR SUPREMO
             if (type === "meu_addon:industrial_fertilizer") {
               const isSapling = Object.keys(SAPLINGS).includes(aboveBlock.typeId);
               const isCactusOrReed = aboveBlock.typeId === "minecraft:cactus" || aboveBlock.typeId === "minecraft:reeds" || aboveBlock.typeId === "minecraft:bamboo";

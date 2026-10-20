@@ -82,7 +82,7 @@ world.afterEvents.entityHurt.subscribe((event) => {
 });
 
 // ==========================================
-// 2. VEIN MINE, ARADO 3X3 E FORTUNE CUSTOMIZADO
+// 2. VEIN MINE, FORTUNE CUSTOMIZADO E ARADO/DESCASCAR
 // ==========================================
 const VEIN_BLOCKS = new Set([
   "minecraft:stone", "minecraft:deepslate",
@@ -100,7 +100,6 @@ const VEIN_BLOCKS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
-// Mapeamento de minérios para os itens que eles dropam (Simulando Fortune Alto)
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
   "minecraft:deepslate_diamond_ore": "minecraft:diamond",
@@ -114,6 +113,27 @@ const ORE_DROPS = {
   "minecraft:deepslate_lapis_ore": "minecraft:lapis_lazuli",
   "minecraft:redstone_ore": "minecraft:redstone",
   "minecraft:deepslate_redstone_ore": "minecraft:redstone"
+};
+
+const STRIPPED_LOGS = {
+  "minecraft:oak_log": "minecraft:stripped_oak_log",
+  "minecraft:spruce_log": "minecraft:stripped_spruce_log",
+  "minecraft:birch_log": "minecraft:stripped_birch_log",
+  "minecraft:jungle_log": "minecraft:stripped_jungle_log",
+  "minecraft:acacia_log": "minecraft:stripped_acacia_log",
+  "minecraft:dark_oak_log": "minecraft:stripped_dark_oak_log",
+  "minecraft:mangrove_log": "minecraft:stripped_mangrove_log",
+  "minecraft:cherry_log": "minecraft:stripped_cherry_log",
+  "minecraft:crimson_stem": "minecraft:stripped_crimson_stem",
+  "minecraft:warped_stem": "minecraft:stripped_warped_stem",
+  "minecraft:oak_wood": "minecraft:stripped_oak_wood",
+  "minecraft:spruce_wood": "minecraft:stripped_spruce_wood",
+  "minecraft:birch_wood": "minecraft:stripped_birch_wood",
+  "minecraft:jungle_wood": "minecraft:stripped_jungle_wood",
+  "minecraft:acacia_wood": "minecraft:stripped_acacia_wood",
+  "minecraft:dark_oak_wood": "minecraft:stripped_dark_oak_wood",
+  "minecraft:mangrove_wood": "minecraft:stripped_mangrove_wood",
+  "minecraft:cherry_wood": "minecraft:stripped_cherry_wood"
 };
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
@@ -134,17 +154,17 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
     const blockTypeId = brokenBlockPermutation.type.id;
 
-    // === SISTEMA DE FORTUNE CUSTOMIZADO (Ex: Multiplicador equivalente a Nível 5 ~ 8) ===
+    // Fortune Customizado no primeiro bloco quebrado
     if (ORE_DROPS[blockTypeId]) {
       const dropItem = ORE_DROPS[blockTypeId];
-      // Gera entre 3 a 6 itens extras além do padrão do jogo
       const bonusAmount = Math.floor(Math.random() * 4) + 3; 
       block.dimension.spawnItem(new ItemStack(dropItem, bonusAmount), block.location);
     }
 
     if (!VEIN_BLOCKS.has(blockTypeId)) return;
 
-    const queue = [block.location];
+    const initialLoc = block.location;
+    const queue = [initialLoc];
     const visited = new Set();
     const maxBlocks = 64;
     let count = 0;
@@ -159,14 +179,16 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
           visited.add(key);
 
           const targetBlock = player.dimension.getBlock(loc);
-          if (targetBlock && targetBlock.typeId === blockTypeId) {
-            const currentTypeId = targetBlock.typeId;
-            player.dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
+          const isStartingBlock = (loc.x === initialLoc.x && loc.y === initialLoc.y && loc.z === initialLoc.z);
+
+          if (isStartingBlock || (targetBlock && targetBlock.typeId === blockTypeId)) {
+            if (!isStartingBlock) {
+              player.dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
+            }
             count++;
 
-            // Aplica Fortune customizado também nos blocos quebrados em cadeia pelo Vein Mine
-            if (ORE_DROPS[currentTypeId]) {
-              const dropItem = ORE_DROPS[currentTypeId];
+            if (ORE_DROPS[blockTypeId]) {
+              const dropItem = ORE_DROPS[blockTypeId];
               const bonusAmount = Math.floor(Math.random() * 4) + 3;
               player.dimension.spawnItem(new ItemStack(dropItem, bonusAmount), loc);
             }
@@ -190,46 +212,13 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// ==========================================
-// 3. SISTEMA DE LOOTING CUSTOMIZADO (M紆 Mortos)
-// ==========================================
-world.afterEvents.entityDie.subscribe((event) => {
-  try {
-    const { damageSource, deadEntity } = event;
-    if (!damageSource || !damageSource.damagingEntity) return;
-
-    const killer = damageSource.damagingEntity;
-    if (killer.typeId !== "minecraft:player") return;
-
-    const equippable = killer.getComponent("equippable");
-    if (!equippable) return;
-
-    const mainHand = equippable.getEquipment(EquipmentSlot.Mainhand);
-    if (!mainHand || mainHand.typeId !== "meu_addon:paxel") return;
-
-    // Simula Pilhagem Alta (Looting) gerando drops extras baseados no tipo de mob
-    const loc = deadEntity.location;
-    const dim = deadEntity.dimension;
-
-    if (deadEntity.typeId === "minecraft:zombie" || deadEntity.typeId === "minecraft:husk") {
-      dim.spawnItem(new ItemStack("minecraft:rotten_flesh", Math.floor(Math.random() * 5) + 3), loc);
-      if (Math.random() < 0.3) dim.spawnItem(new ItemStack("minecraft:iron_ingot", 1), loc);
-    } else if (deadEntity.typeId === "minecraft:skeleton") {
-      dim.spawnItem(new ItemStack("minecraft:bone", Math.floor(Math.random() * 5) + 3), loc);
-      dim.spawnItem(new ItemStack("minecraft:arrow", Math.floor(Math.random() * 4) + 2), loc);
-    } else if (deadEntity.typeId === "minecraft:spider" || deadEntity.typeId === "minecraft:cave_spider") {
-      dim.spawnItem(new ItemStack("minecraft:string", Math.floor(Math.random() * 4) + 2), loc);
-      dim.spawnItem(new ItemStack("minecraft:spider_eye", Math.floor(Math.random() * 2) + 1), loc);
-    }
-  } catch (e) {}
-});
-
-// Arado 3x3 com a Paxel
+// Ações ao interagir (Arado 3x3 e Descascar Madeira)
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
     const { player, itemStack, block, dimension } = event;
     if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
 
+    // 1. Arado 3x3 (Enxada)
     const validSoil = new Set([
       "minecraft:grass_block",
       "minecraft:dirt",
@@ -256,12 +245,19 @@ world.afterEvents.itemUseOn.subscribe((event) => {
           }
         } catch (err) {}
       });
+      return;
+    }
+
+    // 2. Descascar Madeira (Machado)
+    if (STRIPPED_LOGS[block.typeId]) {
+      const strippedId = STRIPPED_LOGS[block.typeId];
+      dimension.runCommand(`setblock ${block.location.x} ${block.location.y} ${block.location.z} ${strippedId}`);
     }
   } catch (e) {}
 });
 
 // ==========================================
-// 4. AUXILIARES DE BAÚ E TORRES INDUSTRIAIS (Mantidos Iguais)
+// 3. AUXILIARES E TORRES INDUSTRIAIS
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -346,7 +342,7 @@ const LOGS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
-// Loop das Torres Industriais (Mantido idêntico)
+// Loop das Torres Industriais
 system.runInterval(() => {
   try {
     for (const [key, tower] of activeTowers.entries()) {
@@ -359,7 +355,7 @@ system.runInterval(() => {
       }
 
       const machineChest = getAdjacentChestContainer(dimension, location);
-      if (!machineChest) continue;
+      if (!machineChest) continue; // ATENÇÃO: A torre precisa de um baú/barril adjacente para funcionar!
 
       const radius = 8; // Cubo 3D de 17x17x17
 

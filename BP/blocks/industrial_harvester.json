@@ -9,7 +9,6 @@
       }
     },
     "components": {
-      "minecraft:geometry": "geometry.stonecutter",
       "minecraft:material_instances": {
         "up": {
           "texture": "stonecutter_top",
@@ -19,19 +18,7 @@
           "texture": "stonecutter_bottom",
           "render_layer": "opaque"
         },
-        "north": {
-          "texture": "stonecutter_side",
-          "render_layer": "opaque"
-        },
-        "south": {
-          "texture": "stonecutter_side",
-          "render_layer": "opaque"
-        },
-        "east": {
-          "texture": "stonecutter_side",
-          "render_layer": "opaque"
-        },
-        "west": {
+        "*": {
           "texture": "stonecutter_side",
           "render_layer": "opaque"
         }

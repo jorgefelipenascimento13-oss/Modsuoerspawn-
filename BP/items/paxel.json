@@ -10,19 +10,60 @@
     },
     "components": {
       "minecraft:icon": "paxel",
-      "minecraft:display_name": {
-        "value": "Paxel Suprema"
-      },
       "minecraft:max_stack_size": 1,
+      "minecraft:hand_equipped": true,
+      "minecraft:can_destroy_in_creative": false,
       "minecraft:durability": {
-        "max_durability": 2000
+        "max_durability": 2031
+      },
+      "minecraft:damage": {
+        "value": 10
+      },
+      "minecraft:digger": {
+        "use_efficiency": true,
+        "destroy_speeds": [
+          {
+            "block": { "tags": "stone" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "wood" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "dirt" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "sand" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "gravel" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "metal" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "plant" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "leaves" },
+            "speed": 20
+          },
+          {
+            "block": { "tags": "crop" },
+            "speed": 20
+          }
+        ]
       },
       "minecraft:enchantable": {
         "value": 30,
         "slot": "pickaxe"
-      },
-      "minecraft:hand_equipped": true,
-      "minecraft:can_destroy_in_creative": false
+      }
     }
   }
 }

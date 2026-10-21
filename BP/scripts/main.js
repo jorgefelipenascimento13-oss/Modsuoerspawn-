@@ -1,50 +1,44 @@
 import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@minecraft/server";
 
 // ==========================================
-// REGISTRO GLOBAL DE TORRES INDUSTRIAIS
+// REGISTRO E DETECÇÃO DE TORRES UNIFICADAS
 // ==========================================
 const activeTowers = new Map();
 
-function registerTower(block, dimension) {
-  if (!block || !dimension) return;
-  const typeId = block.typeId;
-  if (
-    typeId === "meu_addon:industrial_planter" ||
-    typeId === "meu_addon:industrial_fertilizer" ||
-    typeId === "meu_addon:industrial_harvester"
-  ) {
-    const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
-    if (!activeTowers.has(key)) {
-      activeTowers.set(key, {
-        type: typeId,
-        location: block.location,
-        dimension: dimension
-      });
+function scanAndRegisterTowers() {
+  activeTowers.clear();
+  for (const player of world.getAllPlayers()) {
+    const dim = player.dimension;
+    const px = Math.floor(player.location.x);
+    const py = Math.floor(player.location.y);
+    const pz = Math.floor(player.location.z);
+
+    // Escaneia uma área de 12 blocos ao redor do jogador
+    for (let x = -12; x <= 12; x++) {
+      for (let y = -6; y <= 6; y++) {
+        for (let z = -12; z <= 12; z++) {
+          const loc = { x: px + x, y: py + y, z: pz + z };
+          const block = dim.getBlock(loc);
+          if (block) {
+            const typeId = block.typeId;
+            if (
+              typeId === "meu_addon:industrial_planter" ||
+              typeId === "meu_addon:industrial_fertilizer" ||
+              typeId === "meu_addon:industrial_harvester"
+            ) {
+              const key = `${loc.x},${loc.y},${loc.z},${dim.id}`;
+              activeTowers.set(key, {
+                type: typeId,
+                location: loc,
+                dimension: dim
+              });
+            }
+          }
+        }
+      }
     }
   }
 }
-
-world.afterEvents.playerPlaceBlock.subscribe((event) => {
-  try {
-    registerTower(event.block, event.dimension);
-  } catch (e) {}
-});
-
-world.afterEvents.playerBreakBlock.subscribe((event) => {
-  try {
-    const { block, dimension } = event;
-    const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
-    if (activeTowers.has(key)) {
-      activeTowers.delete(key);
-    }
-  } catch (e) {}
-});
-
-world.afterEvents.playerInteractWithBlock.subscribe((event) => {
-  try {
-    registerTower(event.block, event.player.dimension);
-  } catch (e) {}
-});
 
 // ==========================================
 // 1. GERENCIAMENTO DA PAXEL (Durabilidade e Encantamentos)
@@ -172,7 +166,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Arado 3x3 e Descascar Madeira
+// Arado 3x3 e Descascar Madeira com a Paxel
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
     const { itemStack, block, dimension } = event;
@@ -215,7 +209,7 @@ world.afterEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. AUXILIARES DE BAÚ E TORRES INDUSTRIAIS
+// 3. AUXILIARES DE BAÚ E LÓGICA DAS TORRES
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -300,22 +294,10 @@ const LOGS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
+// Loop principal de execução a cada 1 segundo (20 ticks)
 system.runInterval(() => {
   try {
-    for (const player of world.getAllPlayers()) {
-      const px = Math.floor(player.location.x);
-      const py = Math.floor(player.location.y);
-      const pz = Math.floor(player.location.z);
-      
-      for (let x = -6; x <= 6; x++) {
-        for (let y = -4; y <= 4; y++) {
-          for (let z = -6; z <= 6; z++) {
-            const b = player.dimension.getBlock({ x: px + x, y: py + y, z: pz + z });
-            if (b) registerTower(b, player.dimension);
-          }
-        }
-      }
-    }
+    scanAndRegisterTowers();
 
     for (const [key, tower] of activeTowers.entries()) {
       const { type, location, dimension } = tower;
@@ -340,9 +322,7 @@ system.runInterval(() => {
 
             if (!groundBlock || !aboveBlock) continue;
 
-            // ==========================================
-            // 1. PLANTADOR INTELIGENTE SUPREMO (Adapta qualquer terreno)
-            // ==========================================
+            // 1. PLANTADOR INTELIGENTE
             if (type === "meu_addon:industrial_planter") {
               let hasCactus = false;
               let hasCrimson = false;
@@ -365,40 +345,30 @@ system.runInterval(() => {
                 }
               }
 
-              // A. CACTUS (Precisa de Areia)
               if (hasCactus && aboveBlock.typeId === "minecraft:air") {
-                if (groundBlock.typeId !== "minecraft:sand") {
-                  groundBlock.setType("minecraft:sand");
-                }
+                if (groundBlock.typeId !== "minecraft:sand") groundBlock.setType("minecraft:sand");
                 if (consumeItemFromContainer(machineChest, "minecraft:cactus", 1)) {
                   aboveBlock.setType("minecraft:cactus");
                   continue;
                 }
               }
 
-              // B. FUNGO CARMESIM (Precisa de Nylium Carmesim)
               if (hasCrimson && aboveBlock.typeId === "minecraft:air") {
-                if (groundBlock.typeId !== "minecraft:crimson_nylium") {
-                  groundBlock.setType("minecraft:crimson_nylium");
-                }
+                if (groundBlock.typeId !== "minecraft:crimson_nylium") groundBlock.setType("minecraft:crimson_nylium");
                 if (consumeItemFromContainer(machineChest, "minecraft:crimson_fungus", 1)) {
                   aboveBlock.setType("minecraft:crimson_fungus");
                   continue;
                 }
               }
 
-              // C. FUNGO DISTORCIDO (Precisa de Nylium Distorcido)
               if (hasWarped && aboveBlock.typeId === "minecraft:air") {
-                if (groundBlock.typeId !== "minecraft:warped_nylium") {
-                  groundBlock.setType("minecraft:warped_nylium");
-                }
+                if (groundBlock.typeId !== "minecraft:warped_nylium") groundBlock.setType("minecraft:warped_nylium");
                 if (consumeItemFromContainer(machineChest, "minecraft:warped_fungus", 1)) {
                   aboveBlock.setType("minecraft:warped_fungus");
                   continue;
                 }
               }
 
-              // D. PLANTAÇÕES (Precisam de Farmland)
               if (hasCrops && aboveBlock.typeId === "minecraft:air") {
                 if (groundBlock.typeId !== "minecraft:farmland") {
                   const farmland = BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 });
@@ -420,38 +390,16 @@ system.runInterval(() => {
                 continue;
               }
 
-              // E. CANA-DE-AÇÚCAR (Requer solo adequado e ÁGUA adjacente automática)
               if (hasReeds && aboveBlock.typeId === "minecraft:air") {
                 if (groundBlock.typeId !== "minecraft:sand" && groundBlock.typeId !== "minecraft:dirt" && groundBlock.typeId !== "minecraft:grass_block") {
                   groundBlock.setType("minecraft:dirt");
                 }
-                // Verifica se há água adjacente horizontalmente. Se não houver, coloca água em um bloco de ar vizinho!
-                const neighbors = [
-                  { x: targetLoc.x + 1, y: targetLoc.y, z: targetLoc.z },
-                  { x: targetLoc.x - 1, y: targetLoc.y, z: targetLoc.z },
-                  { x: targetLoc.x, y: targetLoc.y, z: targetLoc.z + 1 },
-                  { x: targetLoc.x, y: targetLoc.y, z: targetLoc.z - 1 }
-                ];
-                let hasWater = false;
-                let airNeighbor = null;
-                for (const n of neighbors) {
-                  const nb = dimension.getBlock(n);
-                  if (nb) {
-                    if (nb.typeId === "minecraft:water") hasWater = true;
-                    if (nb.typeId === "minecraft:air" && !airNeighbor) airNeighbor = nb;
-                  }
-                }
-                if (!hasWater && airNeighbor) {
-                  airNeighbor.setType("minecraft:water");
-                }
-
                 if (consumeItemFromContainer(machineChest, "minecraft:reeds", 1)) {
                   aboveBlock.setType("minecraft:reeds");
                   continue;
                 }
               }
 
-              // F. BAMBU (Requer terra ou grama)
               if (hasBamboo && aboveBlock.typeId === "minecraft:air") {
                 if (groundBlock.typeId !== "minecraft:dirt" && groundBlock.typeId !== "minecraft:grass_block") {
                   groundBlock.setType("minecraft:dirt");
@@ -462,7 +410,6 @@ system.runInterval(() => {
                 }
               }
 
-              // G. MUDAS DE ÁRVORES NORMAIS (Requer terra ou grama)
               if (hasSapling && aboveBlock.typeId === "minecraft:air") {
                 if (groundBlock.typeId !== "minecraft:dirt" && groundBlock.typeId !== "minecraft:grass_block") {
                   groundBlock.setType("minecraft:dirt");
@@ -479,9 +426,7 @@ system.runInterval(() => {
               }
             }
 
-            // ==========================================
             // 2. FERTILIZADOR SUPREMO
-            // ==========================================
             if (type === "meu_addon:industrial_fertilizer") {
               const isSapling = Object.keys(SAPLINGS).includes(aboveBlock.typeId);
               const isCactusOrReed = aboveBlock.typeId === "minecraft:cactus" || aboveBlock.typeId === "minecraft:reeds" || aboveBlock.typeId === "minecraft:bamboo";
@@ -510,9 +455,7 @@ system.runInterval(() => {
               }
             }
 
-            // ==========================================
             // 3. COLHEDOR SUPREMO
-            // ==========================================
             if (type === "meu_addon:industrial_harvester") {
               if (aboveBlock.typeId === "minecraft:wheat") {
                 let isMax = false;
@@ -531,7 +474,9 @@ system.runInterval(() => {
                 }
               } else if (aboveBlock.typeId === "minecraft:potatoes") {
                 let isMax = false;
-                try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+                try {
+                  isMax = aboveBlock.permutation.getState("growth") === 7;
+                } catch (e) {}
                 if (isMax) {
                   aboveBlock.setType("minecraft:air");
                   addItemToContainer(machineChest, "minecraft:potato", 2);

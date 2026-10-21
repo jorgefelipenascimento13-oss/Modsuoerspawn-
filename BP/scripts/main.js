@@ -115,20 +115,18 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
     const blockTypeId = brokenBlockPermutation.type.id;
 
-    // Fortune customizado no bloco inicial
     if (ORE_DROPS[blockTypeId]) {
       const dropItem = ORE_DROPS[blockTypeId];
       const bonusAmount = Math.floor(Math.random() * 4) + 3; 
       block.dimension.spawnItem(new ItemStack(dropItem, bonusAmount), block.location);
     }
 
-    // Só ativa o Vein Mine universal se o jogador estiver agachado (sneaking)
     if (!player.isSneaking) return;
 
     const initialLoc = block.location;
     const queue = [initialLoc];
     const visited = new Set();
-    const maxBlocks = 256; // Perfeito para árvores gigantes ou veios enormes
+    const maxBlocks = 256;
     let count = 0;
 
     system.run(() => {
@@ -174,10 +172,10 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Arado 3x3 e Descascar Madeira ao interagir
+// Interação da Paxel (Arado 3x3 e Descascar Madeira)
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
-    const { itemStack, block, dimension } = event;
+    const { player, itemStack, block, dimension } = event;
     if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
 
     const validSoil = new Set([
@@ -309,9 +307,9 @@ system.runInterval(() => {
       const py = Math.floor(player.location.y);
       const pz = Math.floor(player.location.z);
       
-      for (let x = -5; x <= 5; x++) {
-        for (let y = -3; y <= 3; y++) {
-          for (let z = -5; z <= 5; z++) {
+      for (let x = -6; x <= 6; x++) {
+        for (let y = -4; y <= 4; y++) {
+          for (let z = -6; z <= 6; z++) {
             const b = player.dimension.getBlock({ x: px + x, y: py + y, z: pz + z });
             if (b) registerTower(b, player.dimension);
           }
@@ -331,7 +329,7 @@ system.runInterval(() => {
       const machineChest = getAdjacentChestContainer(dimension, location);
       if (!machineChest) continue;
 
-      const radius = 8; // Cubo 17x17x17
+      const radius = 8;
 
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = -radius; dy <= radius; dy++) {

@@ -4,7 +4,14 @@
     "description": {
       "identifier": "meu_addon:industrial_harvester_recipe"
     },
-    "tags": [ "crafting_table" ],
+    "tags": [
+      "crafting_table"
+    ],
+    "unlock": [
+      {
+        "item": "minecraft:chest"
+      }
+    ],
     "pattern": [
       " S ",
       "SCS",

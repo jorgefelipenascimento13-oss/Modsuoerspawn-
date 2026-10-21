@@ -1,43 +1,53 @@
 import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@minecraft/server";
 
 // ==========================================
-// REGISTRO E DETECÇÃO DE TORRES UNIFICADAS
+// REGISTRO LEVE E REATIVO DE TORRES INDUSTRIAIS
 // ==========================================
 const activeTowers = new Map();
 
-function scanAndRegisterTowers() {
-  activeTowers.clear();
-  for (const player of world.getAllPlayers()) {
-    const dim = player.dimension;
-    const px = Math.floor(player.location.x);
-    const py = Math.floor(player.location.y);
-    const pz = Math.floor(player.location.z);
-
-    for (let x = -12; x <= 12; x++) {
-      for (let y = -6; y <= 6; y++) {
-        for (let z = -12; z <= 12; z++) {
-          const loc = { x: px + x, y: py + y, z: pz + z };
-          const block = dim.getBlock(loc);
-          if (block) {
-            const typeId = block.typeId;
-            if (
-              typeId === "meu_addon:industrial_planter" ||
-              typeId === "meu_addon:industrial_fertilizer" ||
-              typeId === "meu_addon:industrial_harvester"
-            ) {
-              const key = `${loc.x},${loc.y},${loc.z},${dim.id}`;
-              activeTowers.set(key, {
-                type: typeId,
-                location: loc,
-                dimension: dim
-              });
-            }
-          }
-        }
-      }
+function registerTower(block, dimension) {
+  if (!block || !dimension) return;
+  const typeId = block.typeId;
+  if (
+    typeId === "meu_addon:industrial_planter" ||
+    typeId === "meu_addon:industrial_fertilizer" ||
+    typeId === "meu_addon:industrial_harvester"
+  ) {
+    const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
+    if (!activeTowers.has(key)) {
+      activeTowers.set(key, {
+        type: typeId,
+        location: block.location,
+        dimension: dimension
+      });
     }
   }
 }
+
+// Quando a torre é colocada
+world.afterEvents.playerPlaceBlock.subscribe((event) => {
+  try {
+    registerTower(event.block, event.dimension);
+  } catch (e) {}
+});
+
+// Quando o jogador clica/interage com uma torre existente
+world.afterEvents.playerInteractWithBlock.subscribe((event) => {
+  try {
+    registerTower(event.block, event.player.dimension);
+  } catch (e) {}
+});
+
+// Quando a torre é quebrada
+world.afterEvents.playerBreakBlock.subscribe((event) => {
+  try {
+    const { block, dimension } = event;
+    const key = `${block.location.x},${block.location.y},${block.location.z},${dimension.id}`;
+    if (activeTowers.has(key)) {
+      activeTowers.delete(key);
+    }
+  } catch (e) {}
+});
 
 // ==========================================
 // 1. GERENCIAMENTO DA PAXEL (Durabilidade e Encantamentos)
@@ -164,15 +174,16 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Arado 3x3 e Descascar Madeira com a Paxel (Com debug no chat)
+// ==========================================
+// ARADO 3x3 E DESCASCAR MADEIRA (ESTRUTURA DA EVENT API ATUALIZADA)
+// ==========================================
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
-    const { player, itemStack, block, dimension } = event;
+    const { itemStack, block, source } = event;
     if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
+    if (!block) return;
 
-    // Mensagem no chat para confirmar que o script pegou o clique da Paxel
-    player.sendMessage(`[Paxel Debug] Clicou em: ${block.typeId}`);
-
+    const dimension = block.dimension;
     const validSoil = new Set([
       "minecraft:grass_block",
       "minecraft:dirt",
@@ -301,11 +312,9 @@ const LOGS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
-// Loop principal de execução a cada 1 segundo (20 ticks)
+// Loop principal de execução das Torres Registradas
 system.runInterval(() => {
   try {
-    scanAndRegisterTowers();
-
     for (const [key, tower] of activeTowers.entries()) {
       const { type, location, dimension } = tower;
       const block = dimension.getBlock(location);
@@ -316,11 +325,7 @@ system.runInterval(() => {
       }
 
       const machineChest = getAdjacentChestContainer(dimension, location);
-      if (!machineChest) {
-        // Se a torre não achar o baú, avisa no chat para sabermos
-        // world.getAllPlayers().forEach(p => p.sendMessage(`[Torre] Sem baú em ${location.x}, ${location.y}, ${location.z}`));
-        continue;
-      }
+      if (!machineChest) continue;
 
       const radius = 8; // Cubo 17x17x17
 

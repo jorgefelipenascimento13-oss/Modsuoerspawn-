@@ -9,7 +9,7 @@
       }
     },
     "components": {
-      "minecraft:icon": "diamond_pickaxe",
+      "minecraft:icon": "paxel",
       "minecraft:display_name": {
         "value": "Paxel Suprema"
       },
@@ -24,7 +24,7 @@
         }
       },
       "minecraft:damage": {
-        "value": 40
+        "value": 50
       },
       "minecraft:digger": {
         "use_efficiency": true,
@@ -33,7 +33,7 @@
             "block": {
               "tags": "q.any_tag('stone', 'metal', 'wood', 'dirt', 'grass', 'sand', 'gravel', 'snow', 'plant', 'leaves', 'crop', 'obsidian', 'glass', 'ice', 'wool', 'door', 'trapdoor', 'anvil')"
             },
-            "speed": 12
+            "speed": 16
           }
         ]
       },

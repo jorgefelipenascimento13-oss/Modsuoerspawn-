@@ -15,7 +15,7 @@
       },
       "minecraft:max_stack_size": 1,
       "minecraft:hand_equipped": true,
-      "minecraft:can_destroy_in_creative": false,
+      "minecraft:can_destroy_in_creative": true,
       "minecraft:durability": {
         "max_durability": 2031,
         "damage_chance": {
@@ -24,7 +24,7 @@
         }
       },
       "minecraft:damage": {
-        "value": 12
+        "value": 40
       },
       "minecraft:digger": {
         "use_efficiency": true,
@@ -33,7 +33,7 @@
             "block": {
               "tags": "q.any_tag('stone', 'wood', 'dirt', 'grass', 'sand', 'gravel', 'metal', 'plant', 'leaves', 'crop')"
             },
-            "speed": 30
+            "speed": 10
           }
         ]
       },

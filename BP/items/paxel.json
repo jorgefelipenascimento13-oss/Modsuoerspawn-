@@ -9,13 +9,13 @@
       }
     },
     "components": {
-      "minecraft:icon": "paxel",
+      "minecraft:icon": "diamond_pickaxe",
       "minecraft:display_name": {
         "value": "Paxel Suprema"
       },
       "minecraft:max_stack_size": 1,
       "minecraft:hand_equipped": true,
-      "minecraft:can_destroy_in_creative": true,
+      "minecraft:can_destroy_in_creative": false,
       "minecraft:durability": {
         "max_durability": 2031,
         "damage_chance": {
@@ -24,16 +24,16 @@
         }
       },
       "minecraft:damage": {
-        "value": 40
+        "value": 12
       },
       "minecraft:digger": {
         "use_efficiency": true,
         "destroy_speeds": [
           {
             "block": {
-              "tags": "q.any_tag('stone', 'wood', 'dirt', 'grass', 'sand', 'gravel', 'metal', 'plant', 'leaves', 'crop')"
+              "tags": "q.any_tag('stone', 'metal', 'wood', 'dirt', 'grass', 'sand', 'gravel', 'snow', 'plant', 'leaves', 'crop', 'obsidian', 'glass', 'ice', 'wool', 'door', 'trapdoor', 'anvil')"
             },
-            "speed": 10
+            "speed": 50
           }
         ]
       },

@@ -166,7 +166,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Arado 3x3 e Descascar Madeira com a Paxel
+// Arado 3x3 e Descascar Madeira com a Paxel (Via API Direta)
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
     const { itemStack, block, dimension } = event;
@@ -179,6 +179,7 @@ world.afterEvents.itemUseOn.subscribe((event) => {
       "minecraft:coarse_dirt"
     ]);
 
+    // 1. Arado 3x3
     if (validSoil.has(block.typeId)) {
       const center = block.location;
       system.run(() => {
@@ -191,7 +192,7 @@ world.afterEvents.itemUseOn.subscribe((event) => {
               if (targetBlock && validSoil.has(targetBlock.typeId)) {
                 const blockAbove = dimension.getBlock({ x: exactLoc.x, y: exactLoc.y + 1, z: exactLoc.z });
                 if (blockAbove && blockAbove.typeId === "minecraft:air") {
-                  dimension.runCommand(`setblock ${exactLoc.x} ${exactLoc.y} ${exactLoc.z} farmland`);
+                  targetBlock.setPermutation(BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 }));
                 }
               }
             }
@@ -201,9 +202,14 @@ world.afterEvents.itemUseOn.subscribe((event) => {
       return;
     }
 
+    // 2. Descascar Madeira
     if (STRIPPED_LOGS[block.typeId]) {
       const strippedId = STRIPPED_LOGS[block.typeId];
-      dimension.runCommand(`setblock ${block.location.x} ${block.location.y} ${block.location.z} ${strippedId}`);
+      system.run(() => {
+        try {
+          block.setType(strippedId);
+        } catch (err) {}
+      });
     }
   } catch (e) {}
 });

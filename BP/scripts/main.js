@@ -13,7 +13,6 @@ function scanAndRegisterTowers() {
     const py = Math.floor(player.location.y);
     const pz = Math.floor(player.location.z);
 
-    // Escaneia uma área de 12 blocos ao redor do jogador
     for (let x = -12; x <= 12; x++) {
       for (let y = -6; y <= 6; y++) {
         for (let z = -12; z <= 12; z++) {
@@ -100,7 +99,6 @@ const STRIPPED_LOGS = {
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   try {
     const { player, brokenBlockPermutation, block } = event;
-    
     const equippable = player.getComponent("equippable");
     if (!equippable) return;
 
@@ -166,11 +164,14 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Arado 3x3 e Descascar Madeira com a Paxel (Via API Direta)
+// Arado 3x3 e Descascar Madeira com a Paxel (Com debug no chat)
 world.afterEvents.itemUseOn.subscribe((event) => {
   try {
-    const { itemStack, block, dimension } = event;
+    const { player, itemStack, block, dimension } = event;
     if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
+
+    // Mensagem no chat para confirmar que o script pegou o clique da Paxel
+    player.sendMessage(`[Paxel Debug] Clicou em: ${block.typeId}`);
 
     const validSoil = new Set([
       "minecraft:grass_block",
@@ -315,7 +316,11 @@ system.runInterval(() => {
       }
 
       const machineChest = getAdjacentChestContainer(dimension, location);
-      if (!machineChest) continue;
+      if (!machineChest) {
+        // Se a torre não achar o baú, avisa no chat para sabermos
+        // world.getAllPlayers().forEach(p => p.sendMessage(`[Torre] Sem baú em ${location.x}, ${location.y}, ${location.z}`));
+        continue;
+      }
 
       const radius = 8; // Cubo 17x17x17
 

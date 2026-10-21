@@ -30,40 +30,10 @@
         "use_efficiency": true,
         "destroy_speeds": [
           {
-            "block": { "tags": "stone" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "wood" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "dirt" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "sand" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "gravel" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "metal" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "plant" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "leaves" },
-            "speed": 24
-          },
-          {
-            "block": { "tags": "crop" },
-            "speed": 24
+            "block": {
+              "tags": "q.any_tag('stone', 'wood', 'dirt', 'grass', 'sand', 'gravel', 'metal', 'plant', 'leaves', 'crop')"
+            },
+            "speed": 30
           }
         ]
       },

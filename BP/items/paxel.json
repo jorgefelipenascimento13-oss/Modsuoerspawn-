@@ -24,7 +24,7 @@
         }
       },
       "minecraft:damage": {
-        "value": 12
+        "value": 40
       },
       "minecraft:digger": {
         "use_efficiency": true,
@@ -33,7 +33,7 @@
             "block": {
               "tags": "q.any_tag('stone', 'metal', 'wood', 'dirt', 'grass', 'sand', 'gravel', 'snow', 'plant', 'leaves', 'crop', 'obsidian', 'glass', 'ice', 'wool', 'door', 'trapdoor', 'anvil')"
             },
-            "speed": 50
+            "speed": 12
           }
         ]
       },

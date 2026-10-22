@@ -97,7 +97,7 @@ system.runInterval(() => {
 }, 20);
 
 // ==========================================
-// 2. VEIN MINE UNIVERSAL E FORTUNE (Com Drops Naturais)
+// 2. VEIN MINE UNIVERSAL E FORTUNE
 // ==========================================
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
@@ -113,6 +113,13 @@ const ORE_DROPS = {
   "minecraft:redstone_ore": "minecraft:redstone",
   "minecraft:deepslate_redstone_ore": "minecraft:redstone"
 };
+
+const LEAVES_LIST = new Set([
+  "minecraft:oak_leaves", "minecraft:spruce_leaves", "minecraft:birch_leaves",
+  "minecraft:jungle_leaves", "minecraft:acacia_leaves", "minecraft:dark_oak_leaves",
+  "minecraft:cherry_leaves", "minecraft:mangrove_leaves", "minecraft:azalea_leaves",
+  "minecraft:flowering_azalea_leaves"
+]);
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   try {
@@ -155,8 +162,12 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
           if (isStartingBlock || targetBlock.typeId === blockTypeId) {
             if (!isStartingBlock) {
-              // Usa air destroy para forçar a engine a dropar folhas, pedras e itens naturalmente
-              dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
+              // Se forem folhas, quebra sem sumir com os drops naturais
+              if (LEAVES_LIST.has(blockTypeId)) {
+                targetBlock.setType("minecraft:air");
+              } else {
+                dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
+              }
             }
             count++;
 
@@ -268,7 +279,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. TORRES INDUSTRIAIS (Corrigidas e Otimizadas)
+// 3. TORRES INDUSTRIAIS (Fertilizador e Colhedor Corrigidos)
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -361,7 +372,7 @@ system.runInterval(() => {
       const horizontalRadius = 10; 
       const groundY = location.y - 1; 
 
-      // 1. PLANTADOR INTELIGENTE (Planta 1 por ciclo)
+      // 1. PLANTADOR INTELIGENTE
       if (type === "meu_addon:industrial_planter") {
         let availableSeed = null;
         const seedsList = [
@@ -407,7 +418,7 @@ system.runInterval(() => {
         }
       }
 
-      // 2. FERTILIZADOR SUPREMO (Consome 1 Bone Meal para madurar o campo todo)
+      // 2. FERTILIZADOR SUPREMO (Corrigido para forçar maturação e consumir apenas 1 unidade)
       if (type === "meu_addon:industrial_fertilizer") {
         const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
         let hasImmatureCrops = false;
@@ -420,10 +431,14 @@ system.runInterval(() => {
 
             if (aboveBlock && growable.includes(aboveBlock.typeId)) {
               let isMax = false;
-              try { 
-                const growthVal = aboveBlock.permutation.getState("growth");
-                isMax = (growthVal === 7); 
-              } catch (e) {}
+              try {
+                // Tenta diferentes maneiras de ler o estado de crescimento no Bedrock
+                const states = aboveBlock.permutation.getAllStates();
+                const growthVal = states["growth"] !== undefined ? states["growth"] : states["growth_stage"];
+                isMax = (growthVal === 7 || growthVal === undefined);
+              } catch (e) {
+                isMax = false;
+              }
 
               if (!isMax) {
                 hasImmatureCrops = true;
@@ -437,14 +452,19 @@ system.runInterval(() => {
           if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
             for (const cropBlock of cropsToGrow) {
               try {
+                // Força o estágio máximo de crescimento
                 cropBlock.setPermutation(cropBlock.permutation.withState("growth", 7));
-              } catch (e) {}
+              } catch (e) {
+                try {
+                  cropBlock.setPermutation(cropBlock.permutation.withState("growth_stage", 7));
+                } catch (err) {}
+              }
             }
           }
         }
       }
 
-      // 3. COLHEDOR SUPREMO (Colhe as maduras da área)
+      // 3. COLHEDOR SUPREMO (Colhe plantas maduras e armazena no baú)
       if (type === "meu_addon:industrial_harvester") {
         for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
           for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
@@ -455,13 +475,16 @@ system.runInterval(() => {
 
             const cropType = aboveBlock.typeId;
             if (["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(cropType)) {
-              let isMax = false;
-              try { 
-                const growthVal = aboveBlock.permutation.getState("growth");
-                isMax = (growthVal === 7); 
-              } catch (e) {}
+              let isReady = false;
+              try {
+                const states = aboveBlock.permutation.getAllStates();
+                const growthVal = states["growth"] !== undefined ? states["growth"] : states["growth_stage"];
+                isReady = (growthVal === 7 || growthVal === undefined);
+              } catch (e) {
+                isReady = true; // Se não conseguir ler o estado, assume pronto se o ID for o da colheita
+              }
 
-              if (isMax) {
+              if (isReady) {
                 aboveBlock.setType("minecraft:air");
                 if (cropType === "minecraft:wheat") {
                   addItemToContainer(machineChest, "minecraft:wheat", 1);

@@ -97,7 +97,7 @@ system.runInterval(() => {
 }, 20);
 
 // ==========================================
-// 2. VEIN MINE UNIVERSAL E FORTUNE
+// 2. VEIN MINE UNIVERSAL E FORTUNE (Com Drops Naturais)
 // ==========================================
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
@@ -112,14 +112,6 @@ const ORE_DROPS = {
   "minecraft:deepslate_lapis_ore": "minecraft:lapis_lazuli",
   "minecraft:redstone_ore": "minecraft:redstone",
   "minecraft:deepslate_redstone_ore": "minecraft:redstone"
-};
-
-const GENERAL_BLOCK_DROPS = {
-  "minecraft:stone": "minecraft:cobblestone",
-  "minecraft:deepslate": "minecraft:cobbled_deepslate",
-  "minecraft:netherrack": "minecraft:netherrack",
-  "minecraft:basalt": "minecraft:basalt",
-  "minecraft:blackstone": "minecraft:blackstone"
 };
 
 world.afterEvents.playerBreakBlock.subscribe((event) => {
@@ -163,7 +155,8 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
           if (isStartingBlock || targetBlock.typeId === blockTypeId) {
             if (!isStartingBlock) {
-              targetBlock.setType("minecraft:air");
+              // Usa air destroy para forçar a engine a dropar folhas, pedras e itens naturalmente
+              dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
             }
             count++;
 
@@ -171,12 +164,6 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
               const dropItem = ORE_DROPS[blockTypeId];
               const bonusAmount = Math.floor(Math.random() * 4) + 3;
               dimension.spawnItem(new ItemStack(dropItem, bonusAmount), loc);
-            } else if (GENERAL_BLOCK_DROPS[blockTypeId]) {
-              dimension.spawnItem(new ItemStack(GENERAL_BLOCK_DROPS[blockTypeId], 1), loc);
-            } else if (!isStartingBlock) {
-              try {
-                dimension.spawnItem(new ItemStack(blockTypeId, 1), loc);
-              } catch (e) {}
             }
 
             const neighbors = [
@@ -281,7 +268,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. TORRES INDUSTRIAIS (Lógica Industrial Otimizada)
+// 3. TORRES INDUSTRIAIS (Corrigidas e Otimizadas)
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -374,7 +361,7 @@ system.runInterval(() => {
       const horizontalRadius = 10; 
       const groundY = location.y - 1; 
 
-      // 1. PLANTADOR INTELIGENTE (Planta 1 por ciclo para manter controle)
+      // 1. PLANTADOR INTELIGENTE (Planta 1 por ciclo)
       if (type === "meu_addon:industrial_planter") {
         let availableSeed = null;
         const seedsList = [
@@ -404,7 +391,6 @@ system.runInterval(() => {
 
               if (!groundBlock || !aboveBlock) continue;
 
-              // Converte qualquer bloco base sólido em Farmland se tiver ar em cima
               if (groundBlock.typeId !== "minecraft:air" && groundBlock.typeId !== "minecraft:farmland") {
                 groundBlock.setType("minecraft:farmland");
                 break;
@@ -413,7 +399,7 @@ system.runInterval(() => {
               if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
                 if (consumeItemFromContainer(machineChest, availableSeed.seed, 1)) {
                   aboveBlock.setType(availableSeed.crop);
-                  break; // Planta 1 por ciclo
+                  break; 
                 }
               }
             }
@@ -421,7 +407,7 @@ system.runInterval(() => {
         }
       }
 
-      // 2. FERTILIZADOR SUPREMO (Consome APENAS 1 Bone Meal para madurar TODO O CAMPO)
+      // 2. FERTILIZADOR SUPREMO (Consome 1 Bone Meal para madurar o campo todo)
       if (type === "meu_addon:industrial_fertilizer") {
         const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
         let hasImmatureCrops = false;
@@ -434,7 +420,11 @@ system.runInterval(() => {
 
             if (aboveBlock && growable.includes(aboveBlock.typeId)) {
               let isMax = false;
-              try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+              try { 
+                const growthVal = aboveBlock.permutation.getState("growth");
+                isMax = (growthVal === 7); 
+              } catch (e) {}
+
               if (!isMax) {
                 hasImmatureCrops = true;
                 cropsToGrow.push(aboveBlock);
@@ -443,7 +433,6 @@ system.runInterval(() => {
           }
         }
 
-        // Se encontrou plantações crescendo, consome EXATAMENTE 1 Bone Meal e acelera TUDO!
         if (hasImmatureCrops && cropsToGrow.length > 0) {
           if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
             for (const cropBlock of cropsToGrow) {
@@ -467,7 +456,11 @@ system.runInterval(() => {
             const cropType = aboveBlock.typeId;
             if (["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(cropType)) {
               let isMax = false;
-              try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+              try { 
+                const growthVal = aboveBlock.permutation.getState("growth");
+                isMax = (growthVal === 7); 
+              } catch (e) {}
+
               if (isMax) {
                 aboveBlock.setType("minecraft:air");
                 if (cropType === "minecraft:wheat") {
@@ -481,7 +474,7 @@ system.runInterval(() => {
                   addItemToContainer(machineChest, "minecraft:beetroot", 1);
                   addItemToContainer(machineChest, "minecraft:beetroot_seeds", 1);
                 }
-                break; // Colhe 1 por ciclo para manter o fluxo suave
+                break; 
               }
             }
 

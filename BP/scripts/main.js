@@ -7,6 +7,7 @@ console.warn(">>> ADD-ON SUPREMO CARREGADO COM SUCESSO! <<<");
 // REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS
 // ==========================================
 const activeTowers = new Map();
+const fertilizerCooldowns = new Map(); // Controle de tempo para o fertilizador não gastar à toa
 
 function getTowerKey(dimension, loc) {
   return `${loc.x},${loc.y},${loc.z},${dimension.id}`;
@@ -66,6 +67,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
     const key = getTowerKey(dimension, block.location);
     if (activeTowers.has(key)) {
       activeTowers.delete(key);
+      fertilizerCooldowns.delete(key);
     }
   } catch (e) {}
 });
@@ -162,7 +164,6 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
           if (isStartingBlock || targetBlock.typeId === blockTypeId) {
             if (!isStartingBlock) {
-              // Se forem folhas, quebra sem sumir com os drops naturais
               if (LEAVES_LIST.has(blockTypeId)) {
                 targetBlock.setType("minecraft:air");
               } else {
@@ -279,7 +280,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. TORRES INDUSTRIAIS (Fertilizador e Colhedor Corrigidos)
+// 3. TORRES INDUSTRIAIS (Completas e Balanceadas)
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -345,6 +346,18 @@ function addItemToContainer(container, itemTypeId, amount = 1) {
   }
 }
 
+const SAPLINGS = {
+  "minecraft:oak_sapling": "minecraft:oak_log",
+  "minecraft:spruce_sapling": "minecraft:spruce_log",
+  "minecraft:birch_sapling": "minecraft:birch_log",
+  "minecraft:jungle_sapling": "minecraft:jungle_log",
+  "minecraft:acacia_sapling": "minecraft:acacia_log",
+  "minecraft:dark_oak_sapling": "minecraft:dark_oak_log",
+  "minecraft:cherry_sapling": "minecraft:cherry_log",
+  "minecraft:crimson_fungus": "minecraft:crimson_stem",
+  "minecraft:warped_fungus": "minecraft:warped_stem"
+};
+
 const LOGS = new Set([
   "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
   "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
@@ -356,6 +369,7 @@ const LOGS = new Set([
 system.runInterval(() => {
   try {
     scanAndRegisterTowers();
+    const currentTime = system.currentTick;
 
     for (const [key, tower] of activeTowers.entries()) {
       const { type, location, dimension } = tower;
@@ -363,6 +377,7 @@ system.runInterval(() => {
 
       if (!block || block.typeId !== type) {
         activeTowers.delete(key);
+        fertilizerCooldowns.delete(key);
         continue;
       }
 
@@ -372,45 +387,49 @@ system.runInterval(() => {
       const horizontalRadius = 10; 
       const groundY = location.y - 1; 
 
-      // 1. PLANTADOR INTELIGENTE
+      // 1. PLANTADOR INTELIGENTE (Com suporte a sementes, cactos, bambu e mudas)
       if (type === "meu_addon:industrial_planter") {
-        let availableSeed = null;
-        const seedsList = [
-          { seed: "minecraft:wheat_seeds", crop: "minecraft:wheat" },
-          { seed: "minecraft:carrot", crop: "minecraft:carrots" },
-          { seed: "minecraft:potato", crop: "minecraft:potatoes" },
-          { seed: "minecraft:beetroot_seeds", crop: "minecraft:beetroot" }
-        ];
+        for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
+          for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
+            const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
+            const groundBlock = dimension.getBlock(groundLoc);
+            const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
 
-        for (let i = 0; i < machineChest.size; i++) {
-          const item = machineChest.getItem(i);
-          if (item) {
-            const found = seedsList.find(s => s.seed === item.typeId);
-            if (found) {
-              availableSeed = found;
-              break;
+            if (!groundBlock || !aboveBlock) continue;
+
+            // Verifica itens no baú
+            let itemToPlant = null;
+            let targetSoil = "minecraft:farmland";
+
+            for (let i = 0; i < machineChest.size; i++) {
+              const item = machineChest.getItem(i);
+              if (item) {
+                const id = item.typeId;
+                if (id === "minecraft:cactus" || id === "minecraft:reeds" || id === "minecraft:bamboo" || SAPLINGS[id] || ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"].includes(id)) {
+                  itemToPlant = id;
+                  if (id === "minecraft:cactus" || id === "minecraft:sand") targetSoil = "minecraft:sand";
+                  break;
+                }
+              }
             }
-          }
-        }
 
-        if (availableSeed) {
-          for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
-            for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
-              const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
-              const groundBlock = dimension.getBlock(groundLoc);
-              const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
-
-              if (!groundBlock || !aboveBlock) continue;
-
-              if (groundBlock.typeId !== "minecraft:air" && groundBlock.typeId !== "minecraft:farmland") {
-                groundBlock.setType("minecraft:farmland");
+            if (itemToPlant && aboveBlock.typeId === "minecraft:air") {
+              if (groundBlock.typeId !== "minecraft:air" && groundBlock.typeId !== targetSoil) {
+                groundBlock.setType(targetSoil);
                 break;
               }
 
-              if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
-                if (consumeItemFromContainer(machineChest, availableSeed.seed, 1)) {
-                  aboveBlock.setType(availableSeed.crop);
-                  break; 
+              if (groundBlock.typeId === targetSoil || groundBlock.typeId === "minecraft:sand") {
+                if (consumeItemFromContainer(machineChest, itemToPlant, 1)) {
+                  if (itemToPlant === "minecraft:cactus") aboveBlock.setType("minecraft:cactus");
+                  else if (itemToPlant === "minecraft:reeds") aboveBlock.setType("minecraft:reeds");
+                  else if (itemToPlant === "minecraft:bamboo") aboveBlock.setType("minecraft:bamboo");
+                  else if (SAPLINGS[itemToPlant]) aboveBlock.setType(itemToPlant);
+                  else if (itemToPlant === "minecraft:wheat_seeds") aboveBlock.setType("minecraft:wheat");
+                  else if (itemToPlant === "minecraft:carrot") aboveBlock.setType("minecraft:carrots");
+                  else if (itemToPlant === "minecraft:potato") aboveBlock.setType("minecraft:potatoes");
+                  else if (itemToPlant === "minecraft:beetroot_seeds") aboveBlock.setType("minecraft:beetroot");
+                  break;
                 }
               }
             }
@@ -418,58 +437,58 @@ system.runInterval(() => {
         }
       }
 
-      // 2. FERTILIZADOR SUPREMO (Corrigido para forçar maturação e consumir apenas 1 unidade)
+      // 2. FERTILIZADOR SUPREMO (Com Cooldown Inteligente de 8 segundos para não gastar à toa)
       if (type === "meu_addon:industrial_fertilizer") {
-        const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
-        let hasImmatureCrops = false;
-        let cropsToGrow = [];
+        const lastUsed = fertilizerCooldowns.get(key) || 0;
+        // 160 ticks = 8 segundos de pausa entre cada aplicação de Bone Meal na fazenda inteira
+        if (currentTime - lastUsed > 160) {
+          const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
+          let cropsToGrow = [];
 
-        for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
-          for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
-            const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
-            const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
+          for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
+            for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
+              const aboveBlock = dimension.getBlock({ x: location.x + dx, y: groundY + 1, z: location.z + dz });
 
-            if (aboveBlock && growable.includes(aboveBlock.typeId)) {
-              let isMax = false;
-              try {
-                // Tenta diferentes maneiras de ler o estado de crescimento no Bedrock
-                const states = aboveBlock.permutation.getAllStates();
-                const growthVal = states["growth"] !== undefined ? states["growth"] : states["growth_stage"];
-                isMax = (growthVal === 7 || growthVal === undefined);
-              } catch (e) {
-                isMax = false;
-              }
+              if (aboveBlock && growable.includes(aboveBlock.typeId)) {
+                let isMax = false;
+                try {
+                  const states = aboveBlock.permutation.getAllStates();
+                  const growthVal = states["growth"] !== undefined ? states["growth"] : states["growth_stage"];
+                  isMax = (growthVal === 7);
+                } catch (e) {
+                  isMax = false;
+                }
 
-              if (!isMax) {
-                hasImmatureCrops = true;
-                cropsToGrow.push(aboveBlock);
+                if (!isMax) {
+                  cropsToGrow.push(aboveBlock);
+                }
               }
             }
           }
-        }
 
-        if (hasImmatureCrops && cropsToGrow.length > 0) {
-          if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
-            for (const cropBlock of cropsToGrow) {
-              try {
-                // Força o estágio máximo de crescimento
-                cropBlock.setPermutation(cropBlock.permutation.withState("growth", 7));
-              } catch (e) {
+          // Só consome 1 Bone Meal se houver pelo menos 3 plantas para crescer
+          if (cropsToGrow.length >= 3) {
+            if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
+              fertilizerCooldowns.set(key, currentTime);
+              for (const cropBlock of cropsToGrow) {
                 try {
-                  cropBlock.setPermutation(cropBlock.permutation.withState("growth_stage", 7));
-                } catch (err) {}
+                  cropBlock.setPermutation(cropBlock.permutation.withState("growth", 7));
+                } catch (e) {
+                  try {
+                    cropBlock.setPermutation(cropBlock.permutation.withState("growth_stage", 7));
+                  } catch (err) {}
+                }
               }
             }
           }
         }
       }
 
-      // 3. COLHEDOR SUPREMO (Colhe plantas maduras e armazena no baú)
+      // 3. COLHEDOR SUPREMO (Colhe as maduras da área)
       if (type === "meu_addon:industrial_harvester") {
         for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
           for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
-            const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
-            const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
+            const aboveBlock = dimension.getBlock({ x: location.x + dx, y: groundY + 1, z: location.z + dz });
 
             if (!aboveBlock) continue;
 
@@ -481,7 +500,7 @@ system.runInterval(() => {
                 const growthVal = states["growth"] !== undefined ? states["growth"] : states["growth_stage"];
                 isReady = (growthVal === 7 || growthVal === undefined);
               } catch (e) {
-                isReady = true; // Se não conseguir ler o estado, assume pronto se o ID for o da colheita
+                isReady = true;
               }
 
               if (isReady) {

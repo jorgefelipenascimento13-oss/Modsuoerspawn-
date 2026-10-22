@@ -4,7 +4,7 @@ import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@mine
 console.warn(">>> ADD-ON SUPREMO CARREGADO COM SUCESSO! <<<");
 
 // ==========================================
-// REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS (Área Expandida)
+// REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS
 // ==========================================
 const activeTowers = new Map();
 
@@ -20,9 +20,8 @@ function scanAndRegisterTowers() {
       const py = Math.floor(player.location.y);
       const pz = Math.floor(player.location.z);
 
-      // Varredura ajustada para acompanhar o novo raio de 10 blocos
       for (let x = -12; x <= 12; x++) {
-        for (let y = -6; y <= 6; y++) {
+        for (let y = -2; y <= 2; y++) {
           for (let z = -12; z <= 12; z++) {
             const loc = { x: px + x, y: py + y, z: pz + z };
             const block = dim.getBlock(loc);
@@ -98,7 +97,7 @@ system.runInterval(() => {
 }, 20);
 
 // ==========================================
-// 2. VEIN MINE UNIVERSAL E FORTUNE (Corrigido e Otimizado)
+// 2. VEIN MINE UNIVERSAL E FORTUNE
 // ==========================================
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
@@ -282,7 +281,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. AUXILIARES E LÓGICA DAS TORRES INDUSTRIAIS (Raio 20x20)
+// 3. TORRES INDUSTRIAIS (Lógica Industrial Otimizada)
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
@@ -348,18 +347,6 @@ function addItemToContainer(container, itemTypeId, amount = 1) {
   }
 }
 
-const SAPLINGS = {
-  "minecraft:oak_sapling": "minecraft:oak_log",
-  "minecraft:spruce_sapling": "minecraft:spruce_log",
-  "minecraft:birch_sapling": "minecraft:birch_log",
-  "minecraft:jungle_sapling": "minecraft:jungle_log",
-  "minecraft:acacia_sapling": "minecraft:acacia_log",
-  "minecraft:dark_oak_sapling": "minecraft:dark_oak_log",
-  "minecraft:cherry_sapling": "minecraft:cherry_log",
-  "minecraft:crimson_fungus": "minecraft:crimson_stem",
-  "minecraft:warped_fungus": "minecraft:warped_stem"
-};
-
 const LOGS = new Set([
   "minecraft:oak_log", "minecraft:spruce_log", "minecraft:birch_log",
   "minecraft:jungle_log", "minecraft:acacia_log", "minecraft:dark_oak_log",
@@ -384,89 +371,125 @@ system.runInterval(() => {
       const machineChest = getAdjacentChestContainer(dimension, location);
       if (!machineChest) continue;
 
-      // Raio alterado para 10 (cobre uma área de aproximadamente 20x20 blocos)
-      const radius = 10;
+      const horizontalRadius = 10; 
+      const groundY = location.y - 1; 
 
-      for (let dx = -radius; dx <= radius; dx++) {
-        for (let dy = -radius; dy <= radius; dy++) {
-          for (let dz = -radius; dz <= radius; dz++) {
-            const targetLoc = { x: location.x + dx, y: location.y + dy, z: location.z + dz };
-            const groundBlock = dimension.getBlock(targetLoc);
-            const aboveBlock = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 1, z: targetLoc.z });
+      // 1. PLANTADOR INTELIGENTE (Planta 1 por ciclo para manter controle)
+      if (type === "meu_addon:industrial_planter") {
+        let availableSeed = null;
+        const seedsList = [
+          { seed: "minecraft:wheat_seeds", crop: "minecraft:wheat" },
+          { seed: "minecraft:carrot", crop: "minecraft:carrots" },
+          { seed: "minecraft:potato", crop: "minecraft:potatoes" },
+          { seed: "minecraft:beetroot_seeds", crop: "minecraft:beetroot" }
+        ];
 
-            if (!groundBlock || !aboveBlock) continue;
-
-            // 1. PLANTADOR INTELIGENTE
-            if (type === "meu_addon:industrial_planter") {
-              let hasCactus = false;
-              let hasCrops = false;
-
-              for (let i = 0; i < machineChest.size; i++) {
-                const item = machineChest.getItem(i);
-                if (item) {
-                  if (item.typeId === "minecraft:cactus") hasCactus = true;
-                  if (["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"].includes(item.typeId)) hasCrops = true;
-                }
-              }
-
-              if (hasCactus && aboveBlock.typeId === "minecraft:air") {
-                if (groundBlock.typeId !== "minecraft:sand") groundBlock.setType("minecraft:sand");
-                if (consumeItemFromContainer(machineChest, "minecraft:cactus", 1)) {
-                  aboveBlock.setType("minecraft:cactus");
-                  continue;
-                }
-              }
-
-              if (hasCrops && aboveBlock.typeId === "minecraft:air") {
-                if (groundBlock.typeId !== "minecraft:farmland") {
-                  groundBlock.setType("minecraft:farmland");
-                }
-                const seeds = ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"];
-                for (const seedId of seeds) {
-                  if (consumeItemFromContainer(machineChest, seedId, 1)) {
-                    const cropMap = {
-                      "minecraft:wheat_seeds": "minecraft:wheat",
-                      "minecraft:carrot": "minecraft:carrots",
-                      "minecraft:potato": "minecraft:potatoes",
-                      "minecraft:beetroot_seeds": "minecraft:beetroot"
-                    };
-                    aboveBlock.setType(cropMap[seedId]);
-                    break;
-                  }
-                }
-                continue;
-              }
+        for (let i = 0; i < machineChest.size; i++) {
+          const item = machineChest.getItem(i);
+          if (item) {
+            const found = seedsList.find(s => s.seed === item.typeId);
+            if (found) {
+              availableSeed = found;
+              break;
             }
+          }
+        }
 
-            // 2. FERTILIZADOR SUPREMO
-            if (type === "meu_addon:industrial_fertilizer") {
-              const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
+        if (availableSeed) {
+          for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
+            for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
+              const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
+              const groundBlock = dimension.getBlock(groundLoc);
+              const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
 
-              if (growable.includes(aboveBlock.typeId)) {
-                if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
-                  try {
-                    aboveBlock.setPermutation(aboveBlock.permutation.withState("growth", 7));
-                  } catch (e) {}
+              if (!groundBlock || !aboveBlock) continue;
+
+              // Converte qualquer bloco base sólido em Farmland se tiver ar em cima
+              if (groundBlock.typeId !== "minecraft:air" && groundBlock.typeId !== "minecraft:farmland") {
+                groundBlock.setType("minecraft:farmland");
+                break;
+              }
+
+              if (groundBlock.typeId === "minecraft:farmland" && aboveBlock.typeId === "minecraft:air") {
+                if (consumeItemFromContainer(machineChest, availableSeed.seed, 1)) {
+                  aboveBlock.setType(availableSeed.crop);
+                  break; // Planta 1 por ciclo
                 }
               }
             }
+          }
+        }
+      }
 
-            // 3. COLHEDOR SUPREMO
-            if (type === "meu_addon:industrial_harvester") {
-              if (aboveBlock.typeId === "minecraft:wheat") {
-                let isMax = false;
-                try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
-                if (isMax) {
-                  aboveBlock.setType("minecraft:air");
+      // 2. FERTILIZADOR SUPREMO (Consome APENAS 1 Bone Meal para madurar TODO O CAMPO)
+      if (type === "meu_addon:industrial_fertilizer") {
+        const growable = ["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"];
+        let hasImmatureCrops = false;
+        let cropsToGrow = [];
+
+        for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
+          for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
+            const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
+            const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
+
+            if (aboveBlock && growable.includes(aboveBlock.typeId)) {
+              let isMax = false;
+              try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+              if (!isMax) {
+                hasImmatureCrops = true;
+                cropsToGrow.push(aboveBlock);
+              }
+            }
+          }
+        }
+
+        // Se encontrou plantações crescendo, consome EXATAMENTE 1 Bone Meal e acelera TUDO!
+        if (hasImmatureCrops && cropsToGrow.length > 0) {
+          if (consumeItemFromContainer(machineChest, "minecraft:bone_meal", 1)) {
+            for (const cropBlock of cropsToGrow) {
+              try {
+                cropBlock.setPermutation(cropBlock.permutation.withState("growth", 7));
+              } catch (e) {}
+            }
+          }
+        }
+      }
+
+      // 3. COLHEDOR SUPREMO (Colhe as maduras da área)
+      if (type === "meu_addon:industrial_harvester") {
+        for (let dx = -horizontalRadius; dx <= horizontalRadius; dx++) {
+          for (let dz = -horizontalRadius; dz <= horizontalRadius; dz++) {
+            const groundLoc = { x: location.x + dx, y: groundY, z: location.z + dz };
+            const aboveBlock = dimension.getBlock({ x: groundLoc.x, y: groundY + 1, z: groundLoc.z });
+
+            if (!aboveBlock) continue;
+
+            const cropType = aboveBlock.typeId;
+            if (["minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroot"].includes(cropType)) {
+              let isMax = false;
+              try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
+              if (isMax) {
+                aboveBlock.setType("minecraft:air");
+                if (cropType === "minecraft:wheat") {
                   addItemToContainer(machineChest, "minecraft:wheat", 1);
                   addItemToContainer(machineChest, "minecraft:wheat_seeds", 1);
+                } else if (cropType === "minecraft:carrots") {
+                  addItemToContainer(machineChest, "minecraft:carrot", 2);
+                } else if (cropType === "minecraft:potatoes") {
+                  addItemToContainer(machineChest, "minecraft:potato", 2);
+                } else if (cropType === "minecraft:beetroot") {
+                  addItemToContainer(machineChest, "minecraft:beetroot", 1);
+                  addItemToContainer(machineChest, "minecraft:beetroot_seeds", 1);
                 }
+                break; // Colhe 1 por ciclo para manter o fluxo suave
               }
-              if (LOGS.has(aboveBlock.typeId)) {
-                const logType = aboveBlock.typeId;
-                aboveBlock.setType("minecraft:air");
-                addItemToContainer(machineChest, logType, 1);
-              }
+            }
+
+            if (LOGS.has(aboveBlock.typeId)) {
+              const logType = aboveBlock.typeId;
+              aboveBlock.setType("minecraft:air");
+              addItemToContainer(machineChest, logType, 1);
+              break;
             }
           }
         }

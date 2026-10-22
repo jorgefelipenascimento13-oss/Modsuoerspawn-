@@ -4,12 +4,46 @@ import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@mine
 console.warn(">>> ADD-ON SUPREMO CARREGADO COM SUCESSO! <<<");
 
 // ==========================================
-// REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS
+// REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS (Área Expandida)
 // ==========================================
 const activeTowers = new Map();
 
 function getTowerKey(dimension, loc) {
   return `${loc.x},${loc.y},${loc.z},${dimension.id}`;
+}
+
+function scanAndRegisterTowers() {
+  try {
+    for (const player of world.getAllPlayers()) {
+      const dim = player.dimension;
+      const px = Math.floor(player.location.x);
+      const py = Math.floor(player.location.y);
+      const pz = Math.floor(player.location.z);
+
+      // Varredura ajustada para acompanhar o novo raio de 10 blocos
+      for (let x = -12; x <= 12; x++) {
+        for (let y = -6; y <= 6; y++) {
+          for (let z = -12; z <= 12; z++) {
+            const loc = { x: px + x, y: py + y, z: pz + z };
+            const block = dim.getBlock(loc);
+            if (block) {
+              const typeId = block.typeId;
+              if (
+                typeId === "meu_addon:industrial_planter" ||
+                typeId === "meu_addon:industrial_fertilizer" ||
+                typeId === "meu_addon:industrial_harvester"
+              ) {
+                const key = getTowerKey(dim, loc);
+                if (!activeTowers.has(key)) {
+                  activeTowers.set(key, { type: typeId, location: loc, dimension: dim });
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } catch (e) {}
 }
 
 world.afterEvents.playerPlaceBlock.subscribe((event) => {
@@ -64,7 +98,7 @@ system.runInterval(() => {
 }, 20);
 
 // ==========================================
-// 2. VEIN MINE UNIVERSAL E FORTUNE (Corrigido com Drops)
+// 2. VEIN MINE UNIVERSAL E FORTUNE (Corrigido e Otimizado)
 // ==========================================
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
@@ -81,6 +115,14 @@ const ORE_DROPS = {
   "minecraft:deepslate_redstone_ore": "minecraft:redstone"
 };
 
+const GENERAL_BLOCK_DROPS = {
+  "minecraft:stone": "minecraft:cobblestone",
+  "minecraft:deepslate": "minecraft:cobbled_deepslate",
+  "minecraft:netherrack": "minecraft:netherrack",
+  "minecraft:basalt": "minecraft:basalt",
+  "minecraft:blackstone": "minecraft:blackstone"
+};
+
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   try {
     const { player, brokenBlockPermutation, block, dimension } = event;
@@ -92,14 +134,12 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
     const blockTypeId = brokenBlockPermutation.type.id;
 
-    // Drop com efeito Fortune simulado para minérios quebrados individualmente
     if (ORE_DROPS[blockTypeId]) {
       const dropItem = ORE_DROPS[blockTypeId];
       const bonusAmount = Math.floor(Math.random() * 4) + 3; 
       dimension.spawnItem(new ItemStack(dropItem, bonusAmount), block.location);
     }
 
-    // Se não estiver agachado, não ativa o Vein Mine em cadeia
     if (!player.isSneaking) return;
 
     const initialLoc = block.location;
@@ -124,16 +164,20 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
           if (isStartingBlock || targetBlock.typeId === blockTypeId) {
             if (!isStartingBlock) {
-              // Usa comando para destruir e dropar o bloco corretamente em cadeia
-              dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
+              targetBlock.setType("minecraft:air");
             }
             count++;
 
-            // Se for minério no Vein Mine, garante o drop bonus
             if (ORE_DROPS[blockTypeId]) {
               const dropItem = ORE_DROPS[blockTypeId];
               const bonusAmount = Math.floor(Math.random() * 4) + 3;
               dimension.spawnItem(new ItemStack(dropItem, bonusAmount), loc);
+            } else if (GENERAL_BLOCK_DROPS[blockTypeId]) {
+              dimension.spawnItem(new ItemStack(GENERAL_BLOCK_DROPS[blockTypeId], 1), loc);
+            } else if (!isStartingBlock) {
+              try {
+                dimension.spawnItem(new ItemStack(blockTypeId, 1), loc);
+              } catch (e) {}
             }
 
             const neighbors = [
@@ -156,7 +200,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// ARADO 3x3 E DESCASCAR MADEIRA (Corrigido com beforeEvents)
+// ARADO 3x3 E DESCASCAR MADEIRA
 // ==========================================
 const STRIPPED_LOGS = {
   "minecraft:oak_log": "minecraft:stripped_oak_log",
@@ -195,7 +239,6 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
     const dimension = block.dimension;
     const blockTypeId = block.typeId;
 
-    // 1. Descascar Madeira
     if (STRIPPED_LOGS[blockTypeId]) {
       const strippedId = STRIPPED_LOGS[blockTypeId];
       system.run(() => {
@@ -210,7 +253,6 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
       return;
     }
 
-    // 2. Arado 3x3
     if (VALID_SOILS.has(blockTypeId)) {
       const center = block.location;
       system.run(() => {
@@ -224,7 +266,7 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
               if (targetBlock && VALID_SOILS.has(targetBlock.typeId)) {
                 const blockAbove = dimension.getBlock({ x: targetLoc.x, y: targetLoc.y + 1, z: targetLoc.z });
                 if (blockAbove && (blockAbove.typeId === "minecraft:air" || blockAbove.typeId.includes("grass") || blockAbove.typeId.includes("flower"))) {
-                  targetBlock.setPermutation(BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 }));
+                  targetBlock.setType("minecraft:farmland");
                   convertedAny = true;
                 }
               }
@@ -240,11 +282,10 @@ world.beforeEvents.itemUseOn.subscribe((event) => {
 });
 
 // ==========================================
-// 3. AUXILIARES E LÓGICA DAS TORRES INDUSTRIAIS
+// 3. AUXILIARES E LÓGICA DAS TORRES INDUSTRIAIS (Raio 20x20)
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
-    // Procura baús ao redor (incluindo em cima e embaixo para suportar pilhas de baús)
     const directions = [
       { x: loc.x + 1, y: loc.y, z: loc.z },
       { x: loc.x - 1, y: loc.y, z: loc.z },
@@ -329,6 +370,8 @@ const LOGS = new Set([
 // Loop principal de execução das Torres
 system.runInterval(() => {
   try {
+    scanAndRegisterTowers();
+
     for (const [key, tower] of activeTowers.entries()) {
       const { type, location, dimension } = tower;
       const block = dimension.getBlock(location);
@@ -341,7 +384,8 @@ system.runInterval(() => {
       const machineChest = getAdjacentChestContainer(dimension, location);
       if (!machineChest) continue;
 
-      const radius = 6;
+      // Raio alterado para 10 (cobre uma área de aproximadamente 20x20 blocos)
+      const radius = 10;
 
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = -radius; dy <= radius; dy++) {
@@ -375,7 +419,7 @@ system.runInterval(() => {
 
               if (hasCrops && aboveBlock.typeId === "minecraft:air") {
                 if (groundBlock.typeId !== "minecraft:farmland") {
-                  groundBlock.setPermutation(BlockPermutation.resolve("minecraft:farmland", { "moisture": 7 }));
+                  groundBlock.setType("minecraft:farmland");
                 }
                 const seeds = ["minecraft:wheat_seeds", "minecraft:carrot", "minecraft:potato", "minecraft:beetroot_seeds"];
                 for (const seedId of seeds) {
@@ -408,7 +452,7 @@ system.runInterval(() => {
             }
 
             // 3. COLHEDOR SUPREMO
-            if (type === "meu_asset:industrial_harvester" || type === "meu_addon:industrial_harvester") {
+            if (type === "meu_addon:industrial_harvester") {
               if (aboveBlock.typeId === "minecraft:wheat") {
                 let isMax = false;
                 try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}

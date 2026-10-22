@@ -4,7 +4,7 @@ import { world, system, BlockPermutation, ItemStack, EquipmentSlot } from "@mine
 console.warn(">>> ADD-ON SUPREMO CARREGADO COM SUCESSO! <<<");
 
 // ==========================================
-// REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS (Otimizado por Eventos)
+// REGISTRO E DETECÇÃO DE TORRES INDUSTRIAIS
 // ==========================================
 const activeTowers = new Map();
 
@@ -12,7 +12,6 @@ function getTowerKey(dimension, loc) {
   return `${loc.x},${loc.y},${loc.z},${dimension.id}`;
 }
 
-// Registrar torre ao colocar
 world.afterEvents.playerPlaceBlock.subscribe((event) => {
   try {
     const { block, dimension } = event;
@@ -28,7 +27,6 @@ world.afterEvents.playerPlaceBlock.subscribe((event) => {
   } catch (e) {}
 });
 
-// Remover torre ao quebrar
 world.afterEvents.playerBreakBlock.subscribe((event) => {
   try {
     const { block, dimension } = event;
@@ -66,7 +64,7 @@ system.runInterval(() => {
 }, 20);
 
 // ==========================================
-// 2. VEIN MINE UNIVERSAL E FORTUNE (Corrigido)
+// 2. VEIN MINE UNIVERSAL E FORTUNE (Corrigido com Drops)
 // ==========================================
 const ORE_DROPS = {
   "minecraft:diamond_ore": "minecraft:diamond",
@@ -107,7 +105,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
     const initialLoc = block.location;
     const queue = [initialLoc];
     const visited = new Set();
-    const maxBlocks = 128; // Limite seguro para evitar travamentos
+    const maxBlocks = 128;
     let count = 0;
 
     system.run(() => {
@@ -126,10 +124,12 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 
           if (isStartingBlock || targetBlock.typeId === blockTypeId) {
             if (!isStartingBlock) {
-              targetBlock.setType("minecraft:air");
+              // Usa comando para destruir e dropar o bloco corretamente em cadeia
+              dimension.runCommand(`setblock ${loc.x} ${loc.y} ${loc.z} air destroy`);
             }
             count++;
 
+            // Se for minério no Vein Mine, garante o drop bonus
             if (ORE_DROPS[blockTypeId]) {
               const dropItem = ORE_DROPS[blockTypeId];
               const bonusAmount = Math.floor(Math.random() * 4) + 3;
@@ -156,7 +156,7 @@ world.afterEvents.playerBreakBlock.subscribe((event) => {
 });
 
 // ==========================================
-// ARADO 3x3 E DESCASCAR MADEIRA (Atualizado)
+// ARADO 3x3 E DESCASCAR MADEIRA (Corrigido com beforeEvents)
 // ==========================================
 const STRIPPED_LOGS = {
   "minecraft:oak_log": "minecraft:stripped_oak_log",
@@ -186,7 +186,7 @@ const VALID_SOILS = new Set([
   "minecraft:coarse_dirt"
 ]);
 
-world.afterEvents.itemUseOn.subscribe((event) => {
+world.beforeEvents.itemUseOn.subscribe((event) => {
   try {
     const { itemStack, block } = event;
     if (!itemStack || itemStack.typeId !== "meu_addon:paxel") return;
@@ -244,6 +244,7 @@ world.afterEvents.itemUseOn.subscribe((event) => {
 // ==========================================
 function getAdjacentChestContainer(dimension, loc) {
   try {
+    // Procura baús ao redor (incluindo em cima e embaixo para suportar pilhas de baús)
     const directions = [
       { x: loc.x + 1, y: loc.y, z: loc.z },
       { x: loc.x - 1, y: loc.y, z: loc.z },
@@ -325,7 +326,7 @@ const LOGS = new Set([
   "minecraft:crimson_stem", "minecraft:warped_stem"
 ]);
 
-// Loop principal de execução das Torres (Rodando a cada 1 segundo)
+// Loop principal de execução das Torres
 system.runInterval(() => {
   try {
     for (const [key, tower] of activeTowers.entries()) {
@@ -340,7 +341,7 @@ system.runInterval(() => {
       const machineChest = getAdjacentChestContainer(dimension, location);
       if (!machineChest) continue;
 
-      const radius = 6; // Raio otimizado
+      const radius = 6;
 
       for (let dx = -radius; dx <= radius; dx++) {
         for (let dy = -radius; dy <= radius; dy++) {
@@ -407,7 +408,7 @@ system.runInterval(() => {
             }
 
             // 3. COLHEDOR SUPREMO
-            if (type === "meu_addon:industrial_harvester") {
+            if (type === "meu_asset:industrial_harvester" || type === "meu_addon:industrial_harvester") {
               if (aboveBlock.typeId === "minecraft:wheat") {
                 let isMax = false;
                 try { isMax = aboveBlock.permutation.getState("growth") === 7; } catch (e) {}
